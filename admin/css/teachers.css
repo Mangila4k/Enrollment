@@ -1,0 +1,1374 @@
+/* ========================================
+   TEACHERS PAGE SPECIFIC STYLES
+======================================== */
+
+/* Back Button */
+.back-btn {
+    background: var(--bg-white);
+    padding: 10px 20px;
+    border-radius: 12px;
+    text-decoration: none;
+    color: var(--text-dark);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    transition: all 0.3s ease;
+    margin-bottom: 10px;
+    margin-top: 10px;
+}
+
+.back-btn i {
+    font-size: 14px;
+    transition: transform 0.3s ease;
+}
+
+.back-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.back-btn:hover i {
+    transform: translateX(-3px);
+}
+
+/* Stats Grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 25px;
+    margin-bottom: 30px;
+    margin-top: 20px;
+}
+
+.stat-card {
+    background: var(--bg-white);
+    border-radius: 20px;
+    padding: 25px;
+    box-shadow: var(--shadow);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+}
+
+.stat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.stat-header h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-gray);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0;
+}
+
+.stat-icon {
+    width: 50px;
+    height: 50px;
+    background: rgba(11, 79, 46, 0.1);
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: var(--primary);
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover .stat-icon {
+    background: var(--primary);
+    color: white;
+    transform: scale(1.05);
+}
+
+.stat-number {
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--text-dark);
+    margin-bottom: 8px;
+    line-height: 1;
+}
+
+.stat-label {
+    font-size: 13px;
+    color: var(--text-gray);
+    font-weight: 500;
+}
+
+/* Actions Bar */
+.actions-bar {
+    background: var(--bg-white);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    box-shadow: var(--shadow);
+}
+
+.filter-group {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.filter-select {
+    padding: 10px 15px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 14px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.filter-select:hover {
+    border-color: var(--primary);
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(11, 79, 46, 0.1);
+}
+
+.search-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg-white);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0 15px;
+    transition: all 0.3s;
+}
+
+.search-box:focus-within {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(11, 79, 46, 0.1);
+}
+
+.search-box i {
+    color: var(--text-gray);
+}
+
+.search-box input {
+    border: none;
+    background: transparent;
+    padding: 12px 0;
+    width: 250px;
+    font-size: 14px;
+}
+
+.search-box input:focus {
+    outline: none;
+}
+
+/* Table Card */
+.table-card {
+    background: var(--bg-white);
+    border-radius: 20px;
+    padding: 25px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid var(--border);
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.table-header h3 {
+    font-size: 18px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    color: var(--text-dark);
+}
+
+.table-header h3 i {
+    color: var(--primary);
+    font-size: 20px;
+}
+
+.badge-count {
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    padding: 6px 14px;
+    border-radius: 30px;
+    font-size: 12px;
+    color: white;
+    font-weight: 600;
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+/* Teacher Info */
+.teacher-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.teacher-avatar {
+    width: 45px;
+    height: 45px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 18px;
+}
+
+.teacher-details h4 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: var(--text-dark);
+}
+
+.teacher-details span {
+    font-size: 11px;
+    color: var(--text-gray);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Teachers Table */
+.teachers-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+/* Table Header */
+.teachers-table thead tr {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+}
+
+.teachers-table th {
+    text-align: left;
+    padding: 16px 15px;
+    font-weight: 600;
+    font-size: 13px;
+    color: white;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.teachers-table th i {
+    margin-right: 8px;
+    font-size: 14px;
+    color: var(--secondary);
+}
+
+/* Table Body */
+.teachers-table tbody tr {
+    transition: all 0.3s ease;
+    border-bottom: 1px solid var(--border);
+}
+
+.teachers-table tbody tr:hover {
+    background: var(--bg-light);
+    transform: scale(1.01);
+    box-shadow: var(--shadow-sm);
+}
+
+.teachers-table td {
+    padding: 16px 15px;
+    vertical-align: middle;
+    color: var(--text-dark);
+    border-bottom: 1px solid var(--border);
+}
+
+/* Zebra Striping */
+.teachers-table tbody tr:nth-child(even) {
+    background: #fafafa;
+}
+
+.teachers-table tbody tr:nth-child(even):hover {
+    background: var(--bg-light);
+}
+
+/* First & Last Cell Border Radius */
+.teachers-table tr td:first-child,
+.teachers-table tr th:first-child {
+    padding-left: 20px;
+}
+
+.teachers-table tr td:last-child,
+.teachers-table tr th:last-child {
+    padding-right: 20px;
+}
+
+/* Teacher Info Cell */
+.teachers-table .teacher-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.teachers-table .teacher-avatar {
+    width: 45px;
+    height: 45px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.teachers-table .teacher-details h4 {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    color: var(--text-dark);
+}
+
+.teachers-table .teacher-details span {
+    font-size: 11px;
+    color: var(--text-gray);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Email Cell */
+.teachers-table td:nth-child(2) i {
+    margin-right: 6px;
+    color: var(--primary);
+    font-size: 12px;
+}
+
+/* ID Number Cell */
+.teachers-table .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 30px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.teachers-table .badge-info {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+}
+
+.teachers-table .badge-success {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+}
+
+.teachers-table .badge-warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+}
+
+/* Section Tags Cell */
+.teachers-table .section-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.teachers-table .section-tag {
+    background: rgba(11, 79, 46, 0.1);
+    color: var(--primary);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* Status Cell */
+.teachers-table .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 30px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.teachers-table .status-active {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+}
+
+.teachers-table .status-inactive {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+/* Action Buttons Cell */
+.teachers-table .action-btns {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.teachers-table .action-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    transition: all 0.3s;
+    color: var(--text-gray);
+    background: var(--bg-light);
+    border: none;
+    cursor: pointer;
+}
+
+.teachers-table .action-btn:hover {
+    transform: translateY(-2px);
+}
+
+.teachers-table .action-btn.view:hover {
+    background: var(--primary);
+    color: white;
+}
+
+.teachers-table .action-btn.edit:hover {
+    background: var(--info);
+    color: white;
+}
+
+.teachers-table .action-btn.delete:hover {
+    background: var(--danger);
+    color: white;
+}
+
+/* No Data Row */
+.teachers-table .no-data {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-gray);
+}
+
+.teachers-table .no-data i {
+    font-size: 60px;
+    opacity: 0.3;
+    margin-bottom: 15px;
+}
+
+.teachers-table .no-data h3 {
+    color: var(--text-dark);
+    margin-bottom: 10px;
+    font-size: 18px;
+}
+
+.teachers-table .no-data p {
+    font-size: 14px;
+}
+
+/* Section Tags */
+.section-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.section-tag {
+    background: rgba(11, 79, 46, 0.1);
+    color: var(--primary);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+/* Badges */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 30px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.badge-info {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+}
+
+.badge-success {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+}
+
+.badge-warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+}
+
+/* Action Buttons */
+.action-btns {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.action-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    transition: all 0.3s;
+    color: var(--text-gray);
+    background: var(--bg-light);
+    border: none;
+    cursor: pointer;
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+}
+
+.action-btn.view:hover {
+    background: var(--primary);
+    color: white;
+}
+
+.action-btn.edit:hover {
+    background: var(--info);
+    color: white;
+}
+
+.action-btn.delete:hover {
+    background: var(--danger);
+    color: white;
+}
+
+/* Alerts */
+.alert {
+    padding: 15px 20px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.alert-success {
+    background: #d4edda;
+    color: #155724;
+    border-left: 4px solid var(--success);
+}
+
+.alert-error {
+    background: #f8d7da;
+    color: #721c24;
+    border-left: 4px solid var(--danger);
+}
+
+/* No Data */
+.no-data {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-gray);
+}
+
+.no-data i {
+    font-size: 60px;
+    opacity: 0.3;
+    margin-bottom: 15px;
+}
+
+.no-data h3 {
+    color: var(--text-dark);
+    margin-bottom: 10px;
+    font-size: 18px;
+}
+
+.no-data p {
+    font-size: 14px;
+}
+
+/* Button Add Design */
+.btn-add {
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: white;
+    padding: 12px 24px;
+    border-radius: 12px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-add i {
+    font-size: 16px;
+    transition: transform 0.3s ease;
+}
+
+.btn-add:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(11, 79, 46, 0.3);
+    background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+}
+
+.btn-add:hover i {
+    transform: scale(1.1);
+}
+
+.btn-add:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Ripple effect on click */
+.btn-add::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.5s, height 0.5s;
+}
+
+.btn-add:active::after {
+    width: 200px;
+    height: 200px;
+}
+
+/* Different button variants */
+.btn-add-sm {
+    padding: 8px 16px;
+    font-size: 12px;
+}
+
+.btn-add-sm i {
+    font-size: 14px;
+}
+
+.btn-add-lg {
+    padding: 14px 28px;
+    font-size: 16px;
+}
+
+.btn-add-lg i {
+    font-size: 18px;
+}
+
+/* Disabled state */
+.btn-add:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-add:disabled:hover {
+    transform: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* ========================================
+   TEACHERS PAGE SPECIFIC STYLES
+======================================== */
+
+/* Page Header */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.page-header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 8px;
+}
+
+.page-header p {
+    color: var(--text-gray);
+    font-size: 14px;
+}
+
+/* Stats Grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 25px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: var(--bg-white);
+    border-radius: 20px;
+    padding: 25px;
+    box-shadow: var(--shadow);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+}
+
+.stat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.stat-header h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-gray);
+    text-transform: uppercase;
+    margin: 0;
+}
+
+.stat-icon {
+    width: 50px;
+    height: 50px;
+    background: rgba(11, 79, 46, 0.1);
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: var(--primary);
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover .stat-icon {
+    background: var(--primary);
+    color: white;
+    transform: scale(1.05);
+}
+
+.stat-number {
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--text-dark);
+    margin-bottom: 8px;
+    line-height: 1;
+}
+
+.stat-label {
+    font-size: 13px;
+    color: var(--text-gray);
+    font-weight: 500;
+}
+
+/* Actions Bar */
+.actions-bar {
+    background: var(--bg-white);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    box-shadow: var(--shadow);
+}
+
+.filter-group {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.filter-select {
+    padding: 10px 15px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 14px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.filter-select:hover {
+    border-color: var(--primary);
+}
+
+.search-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg-white);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0 15px;
+    transition: all 0.3s;
+}
+
+.search-box:focus-within {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(11, 79, 46, 0.1);
+}
+
+.search-box i {
+    color: var(--text-gray);
+}
+
+.search-box input {
+    border: none;
+    background: transparent;
+    padding: 12px 0;
+    width: 250px;
+    font-size: 14px;
+}
+
+.search-box input:focus {
+    outline: none;
+}
+
+.btn-add {
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: white;
+    padding: 12px 24px;
+    border-radius: 12px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    transition: all 0.3s;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-add:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+/* Table Card */
+.table-card {
+    background: var(--bg-white);
+    border-radius: 20px;
+    padding: 25px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid var(--border);
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.table-header h3 {
+    font-size: 18px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    color: var(--text-dark);
+}
+
+.table-header h3 i {
+    color: var(--primary);
+}
+
+.badge-count {
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    padding: 6px 14px;
+    border-radius: 30px;
+    font-size: 12px;
+    color: white;
+    font-weight: 600;
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+/* Teachers Table */
+.teachers-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.teachers-table thead tr {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+}
+
+.teachers-table th {
+    text-align: left;
+    padding: 16px 15px;
+    font-weight: 600;
+    font-size: 13px;
+    color: white;
+    white-space: nowrap;
+}
+
+.teachers-table th i {
+    margin-right: 8px;
+    color: var(--secondary);
+}
+
+.teachers-table td {
+    padding: 16px 15px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+}
+
+.teachers-table tbody tr:hover {
+    background: var(--bg-light);
+}
+
+/* Teacher Info */
+.teacher-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Teacher Avatar (Fallback - Letter) */
+.teacher-avatar {
+    width: 45px;
+    height: 45px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+/* Teacher Avatar with Profile Image */
+.teacher-avatar-img {
+    width: 45px;
+    height: 45px;
+    border-radius: 12px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.teacher-avatar-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Hover Effect for Teacher Avatar */
+.teacher-avatar:hover,
+.teacher-avatar-img:hover {
+    transform: scale(1.05);
+    transition: transform 0.3s ease;
+    cursor: pointer;
+}
+
+/* Border for image avatars */
+.teacher-avatar-img {
+    border: 2px solid var(--secondary);
+}
+
+.teacher-avatar {
+    border: 2px solid white;
+    box-shadow: var(--shadow-sm);
+}
+
+.teacher-details h4 {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    color: var(--text-dark);
+}
+
+.teacher-details span {
+    font-size: 11px;
+    color: var(--text-gray);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Email Cell */
+.teachers-table td:nth-child(2) i {
+    margin-right: 6px;
+    color: var(--primary);
+    font-size: 12px;
+}
+
+/* Badges */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 30px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.badge-info {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+}
+
+.badge-success {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+}
+
+.badge-warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+}
+
+/* Section Tags */
+.section-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.section-tag {
+    background: rgba(11, 79, 46, 0.1);
+    color: var(--primary);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+/* Action Buttons */
+.action-btns {
+    display: flex;
+    gap: 8px;
+}
+
+.action-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    transition: all 0.3s;
+    color: var(--text-gray);
+    background: var(--bg-light);
+    border: none;
+    cursor: pointer;
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+}
+
+.action-btn.view:hover {
+    background: var(--primary);
+    color: white;
+}
+
+.action-btn.edit:hover {
+    background: var(--info);
+    color: white;
+}
+
+.action-btn.delete:hover {
+    background: var(--danger);
+    color: white;
+}
+
+/* Alerts */
+.alert {
+    padding: 15px 20px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.alert-success {
+    background: #d4edda;
+    color: #155724;
+    border-left: 4px solid var(--success);
+}
+
+.alert-error {
+    background: #f8d7da;
+    color: #721c24;
+    border-left: 4px solid var(--danger);
+}
+
+/* No Data */
+.no-data {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-gray);
+}
+
+.no-data i {
+    font-size: 60px;
+    opacity: 0.3;
+    margin-bottom: 15px;
+}
+
+.no-data h3 {
+    color: var(--text-dark);
+    margin-bottom: 10px;
+    font-size: 18px;
+}
+
+.no-data p {
+    font-size: 14px;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .actions-bar {
+        flex-direction: column;
+    }
+    
+    .filter-group {
+        width: 100%;
+    }
+    
+    .filter-select {
+        flex: 1;
+    }
+    
+    .search-box {
+        width: 100%;
+    }
+    
+    .search-box input {
+        width: 100%;
+    }
+    
+    .teachers-table {
+        min-width: 800px;
+    }
+}
+
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .table-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .btn-add {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .teacher-info {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .teacher-avatar,
+    .teacher-avatar-img {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .teacher-details h4 {
+        font-size: 13px;
+    }
+    
+    .teacher-details span {
+        font-size: 10px;
+    }
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .actions-bar {
+        flex-direction: column;
+    }
+    
+    .filter-group {
+        width: 100%;
+    }
+    
+    .filter-select {
+        flex: 1;
+    }
+    
+    .search-box {
+        width: 100%;
+    }
+    
+    .search-box input {
+        width: 100%;
+    }
+    
+    .teachers-table {
+        min-width: 800px;
+    }
+}
+
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .btn-add {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .table-container {
+        overflow-x: auto;
+    }
+    
+    .teacher-info {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .teacher-avatar {
+        width: 40px;
+        height: 40px;
+        font-size: 14px;
+    }
+    
+    .teacher-details h4 {
+        font-size: 13px;
+    }
+    
+    .teacher-details span {
+        font-size: 10px;
+    }
+}

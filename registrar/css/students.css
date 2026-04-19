@@ -1,0 +1,781 @@
+/* ========================================
+   STUDENTS PAGE STYLES
+   Author: PLNHS
+   Description: Specific styles for students.php
+======================================== */
+
+/* ===== ACTIONS BAR ===== */
+.actions-bar {
+    background: var(--bg-white);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    box-shadow: var(--shadow);
+}
+
+.filter-form {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    align-items: center;
+    flex: 1;
+}
+
+.filter-group {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.filter-select {
+    padding: 10px 15px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 14px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.filter-select:hover {
+    border-color: var(--primary);
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(11, 79, 46, 0.1);
+}
+
+.btn-filter {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-filter:hover {
+    background: var(--primary-light);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-reset {
+    background: var(--bg-light);
+    color: var(--text-gray);
+    border: 1px solid var(--border);
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-reset:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: white;
+    transform: translateY(-2px);
+}
+
+.search-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0 15px;
+    transition: all 0.3s;
+    min-width: 250px;
+}
+
+.search-box:focus-within {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(11, 79, 46, 0.1);
+}
+
+.search-box i {
+    color: var(--text-gray);
+}
+
+.search-box input {
+    border: none;
+    background: transparent;
+    padding: 12px 0;
+    width: 100%;
+    font-size: 14px;
+}
+
+.search-box input:focus {
+    outline: none;
+}
+
+.export-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-export {
+    background: var(--bg-white);
+    color: var(--text-dark);
+    border: 1px solid var(--border);
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-export:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    transform: translateY(-2px);
+}
+
+/* ===== TABLE CARD ===== */
+.table-card {
+    background: var(--bg-white);
+    border-radius: 20px;
+    padding: 25px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.table-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-dark);
+}
+
+.table-header h3 i {
+    color: var(--primary);
+}
+
+.stats-badges {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.badge-old {
+    background: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.badge-new {
+    background: rgba(0, 123, 255, 0.1);
+    color: #007bff;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.badge-count {
+    background: var(--bg-light);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    color: var(--text-gray);
+}
+
+/* ===== TABLE CONTAINER ===== */
+.table-container {
+    overflow-x: auto;
+    width: 100%;
+    margin-top: 5px;
+}
+
+/* ===== DATA TABLE ===== */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 800px;
+}
+
+.data-table th {
+    text-align: left;
+    padding: 16px 20px;
+    background: var(--bg-light);
+    color: var(--text-gray);
+    font-weight: 600;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--border);
+}
+
+.data-table td {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    color: var(--text-dark);
+    vertical-align: middle;
+}
+
+.data-table tbody tr:hover {
+    background: var(--bg-light);
+}
+
+.data-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* ===== TABLE ROW STYLES ===== */
+.old-student-row {
+    background-color: rgba(40, 167, 69, 0.02);
+}
+
+.new-student-row {
+    background-color: rgba(0, 123, 255, 0.02);
+}
+
+/* ===== STUDENT INFO ===== */
+.student-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.student-avatar {
+    width: 45px;
+    height: 45px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 18px;
+}
+
+.student-details h4 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: var(--text-dark);
+}
+
+.student-details span {
+    font-size: 12px;
+    color: var(--text-gray);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.enrollment-count {
+    font-size: 10px;
+    color: #28a745;
+    margin-top: 3px;
+    display: inline-block;
+}
+
+/* ===== ID BADGE ===== */
+.id-badge {
+    background: rgba(11, 79, 46, 0.1);
+    color: var(--primary);
+    padding: 5px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    display: inline-block;
+    font-family: monospace;
+}
+
+/* ===== GRADE & STRAND TAGS ===== */
+.grade-tag {
+    background: rgba(11, 79, 46, 0.1);
+    color: var(--primary);
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    display: inline-block;
+    margin-right: 5px;
+}
+
+.strand-tag {
+    background: rgba(255, 215, 0, 0.1);
+    color: #b8860b;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.school-year {
+    background: var(--bg-light);
+    color: var(--text-gray);
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    display: inline-block;
+}
+
+/* ===== STATUS BADGES ===== */
+.status-badge {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.status-enrolled {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+    border: 1px solid var(--success);
+}
+
+.status-pending {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning);
+    border: 1px solid var(--warning);
+}
+
+.status-rejected {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+    border: 1px solid var(--danger);
+}
+
+.status-none {
+    background: rgba(108, 117, 125, 0.1);
+    color: #6c757d;
+    border: 1px solid #6c757d;
+}
+
+.badge-none {
+    background: rgba(108, 117, 125, 0.1);
+    color: #6c757d;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    display: inline-block;
+}
+
+/* ===== STUDENT BADGES ===== */
+.student-badge {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.student-badge.old {
+    background: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+    border: 1px solid #28a745;
+}
+
+.student-badge.new {
+    background: rgba(0, 123, 255, 0.1);
+    color: #007bff;
+    border: 1px solid #007bff;
+}
+
+.student-badge.none {
+    background: rgba(108, 117, 125, 0.1);
+    color: #6c757d;
+    border: 1px solid #6c757d;
+}
+
+/* ===== ACTION BUTTONS ===== */
+.action-btns {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.action-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    transition: all 0.3s;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+}
+
+.action-btn.view {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--info);
+}
+
+.action-btn.view:hover {
+    background: var(--info);
+    color: white;
+}
+
+.action-btn.edit {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning);
+}
+
+.action-btn.edit:hover {
+    background: var(--warning);
+    color: white;
+}
+
+.action-btn.enroll {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+}
+
+.action-btn.enroll:hover {
+    background: var(--success);
+    color: white;
+}
+
+.action-btn.delete {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+}
+
+.action-btn.delete:hover {
+    background: var(--danger);
+    color: white;
+}
+
+/* ===== NO DATA ===== */
+.no-data {
+    text-align: center;
+    padding: 60px;
+    color: var(--text-gray);
+}
+
+.no-data i {
+    font-size: 60px;
+    opacity: 0.3;
+    margin-bottom: 15px;
+}
+
+.no-data h3 {
+    color: var(--text-dark);
+    margin-bottom: 10px;
+}
+
+/* Student Avatar with Profile Picture */
+.student-avatar-img {
+    width: 45px;
+    height: 45px;
+    border-radius: 12px;
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 2px solid var(--secondary);
+}
+
+.student-avatar-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Student Avatar (Fallback) */
+.student-avatar {
+    width: 45px;
+    height: 45px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 18px;
+    flex-shrink: 0;
+    border: 2px solid white;
+    box-shadow: var(--shadow-sm);
+}
+
+/* Hover effect for avatars */
+.student-avatar-img:hover,
+.student-avatar:hover {
+    transform: scale(1.05);
+    transition: transform 0.3s ease;
+    cursor: pointer;
+}
+
+/* Student Info Container */
+.student-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.student-details h4 {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    color: var(--text-dark);
+}
+
+.student-details span {
+    font-size: 11px;
+    color: var(--text-gray);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.enrollment-count {
+    margin-top: 4px;
+    font-size: 10px;
+    color: var(--primary);
+}
+
+/* Student Badges */
+.student-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.student-badge.old {
+    background: rgba(40, 167, 69, 0.15);
+    color: #28a745;
+}
+
+.student-badge.new {
+    background: rgba(0, 123, 255, 0.15);
+    color: #007bff;
+}
+
+.student-badge.none {
+    background: rgba(108, 117, 125, 0.15);
+    color: #6c757d;
+}
+
+/* Stats Badges */
+.stats-badges {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.badge-old {
+    background: rgba(40, 167, 69, 0.15);
+    color: #28a745;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.badge-new {
+    background: rgba(0, 123, 255, 0.15);
+    color: #007bff;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.badge-count {
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    color: white;
+    font-weight: 600;
+}
+
+/* Row highlighting */
+.old-student-row {
+    background-color: rgba(40, 167, 69, 0.02);
+}
+
+.new-student-row {
+    background-color: rgba(0, 123, 255, 0.02);
+}
+
+/* Enrollment Status Badge */
+.status-none {
+    background: rgba(108, 117, 125, 0.15);
+    color: #6c757d;
+}
+
+/* School Year Tag */
+.school-year {
+    background: rgba(11, 79, 46, 0.1);
+    color: var(--primary);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    display: inline-block;
+    white-space: nowrap;
+}
+
+/* Badge None */
+.badge-none {
+    background: rgba(108, 117, 125, 0.1);
+    color: #6c757d;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    display: inline-block;
+}
+
+/* Action Buttons */
+.action-btn.enroll {
+    background: var(--success);
+    color: white;
+}
+
+.action-btn.enroll:hover {
+    background: #059669;
+    transform: translateY(-2px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .stats-badges {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .student-avatar-img,
+    .student-avatar {
+        width: 40px;
+        height: 40px;
+        font-size: 14px;
+    }
+    
+    .student-details h4 {
+        font-size: 13px;
+    }
+    
+    .student-details span {
+        font-size: 10px;
+    }
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1200px) {
+    .stats-badges {
+        width: 100%;
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 768px) {
+    .actions-bar {
+        flex-direction: column;
+    }
+    
+    .filter-form {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .filter-group {
+        width: 100%;
+        flex-direction: column;
+    }
+    
+    .filter-select {
+        width: 100%;
+    }
+    
+    .btn-filter,
+    .btn-reset {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .search-box {
+        width: 100%;
+        min-width: auto;
+    }
+    
+    .export-buttons {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .table-card {
+        padding: 15px;
+    }
+    
+    .table-header {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .stats-badges {
+        justify-content: center;
+    }
+    
+    .student-info {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .action-btns {
+        justify-content: center;
+    }
+    
+    .data-table th,
+    .data-table td {
+        padding: 12px 15px;
+    }
+}

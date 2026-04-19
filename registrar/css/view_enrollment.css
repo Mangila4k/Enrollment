@@ -1,0 +1,725 @@
+/* ========================================
+   VIEW ENROLLMENT PAGE STYLES
+   Author: PLNHS
+   Description: Specific styles for view_enrollment.php
+======================================== */
+
+/* ===== DETAIL CARDS ===== */
+.detail-card {
+    background: var(--bg-white);
+    border-radius: 20px;
+    padding: 25px;
+    box-shadow: var(--shadow);
+    margin-bottom: 25px;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.card-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-dark);
+}
+
+.card-header h3 i {
+    color: var(--primary);
+}
+
+/* ===== STATUS BADGE ===== */
+.status-badge {
+    display: inline-block;
+    padding: 8px 20px;
+    border-radius: 30px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.status-pending {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--warning);
+    border: 1px solid var(--warning);
+}
+
+.status-enrolled {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success);
+    border: 1px solid var(--success);
+}
+
+.status-rejected {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger);
+    border: 1px solid var(--danger);
+}
+
+/* ===== STUDENT INFO CARD ===== */
+.student-info-card {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+    padding: 20px;
+    background: var(--bg-light);
+    border-radius: 15px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+/* Student Avatar with Profile Picture */
+.student-avatar-large {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    font-weight: bold;
+    color: white;
+    border: 3px solid var(--secondary);
+    box-shadow: var(--shadow-md);
+    flex-shrink: 0;
+}
+
+.student-avatar-large-img {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 3px solid var(--secondary);
+}
+
+.student-avatar-large-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Student Info Card */
+.student-info-card {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+}
+
+.student-details h2 {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: var(--text-dark);
+}
+
+.student-meta {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.student-meta span {
+    font-size: 13px;
+    color: var(--text-gray);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.student-meta span i {
+    color: var(--primary);
+}
+
+/* Hover effect for avatars */
+.student-avatar-large-img:hover,
+.student-avatar-large:hover {
+    transform: scale(1.02);
+    transition: transform 0.3s ease;
+    cursor: pointer;
+}
+
+/* Badge Count */
+.badge-count {
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    padding: 4px 12px;
+    border-radius: 30px;
+    font-size: 12px;
+    color: white;
+    font-weight: 600;
+}
+
+/* History Table */
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.history-table th {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    padding: 12px 15px;
+    font-weight: 600;
+    font-size: 13px;
+    text-align: left;
+}
+
+.history-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+}
+
+.history-table tbody tr:hover {
+    background: var(--bg-light);
+}
+
+/* Status Badge */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    border-radius: 30px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.status-pending {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+}
+
+.status-enrolled {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+}
+
+.status-rejected {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+/* Document Link */
+.document-link {
+    color: var(--primary);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.document-link:hover {
+    text-decoration: underline;
+}
+
+/* Status Update Section */
+.status-update {
+    background: var(--bg-light);
+    border-radius: 16px;
+    padding: 20px;
+    margin-top: 25px;
+}
+
+.status-update-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--border);
+}
+
+.status-update-header i {
+    font-size: 20px;
+    color: var(--primary);
+}
+
+.status-update-header h4 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin: 0;
+}
+
+.form-row-status {
+    display: flex;
+    gap: 15px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.status-update .form-group {
+    flex: 1;
+    min-width: 200px;
+    margin-bottom: 0;
+}
+
+.status-update .form-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-gray);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-select {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    font-size: 14px;
+    background: var(--bg-white);
+    cursor: pointer;
+    transition: all 0.3s;
+    font-family: 'Inter', sans-serif;
+}
+
+.status-select:hover {
+    border-color: var(--primary);
+}
+
+.status-select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(11, 79, 46, 0.1);
+}
+
+.btn-update {
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: white;
+    padding: 12px 28px;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.btn-update i {
+    font-size: 14px;
+}
+
+.btn-update:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+}
+
+.btn-update:active {
+    transform: translateY(0);
+}
+
+/* Different status option colors in dropdown */
+.status-select option[value="Pending"] {
+    color: #f59e0b;
+}
+
+.status-select option[value="Enrolled"] {
+    color: #10b981;
+}
+
+.status-select option[value="Rejected"] {
+    color: #ef4444;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .form-row-status {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .status-update .form-group {
+        width: 100%;
+    }
+    
+    .btn-update {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Action Buttons */
+.action-buttons {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.btn-print {
+    background: var(--bg-light);
+    color: var(--text-gray);
+    padding: 10px 20px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-print:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+/* ===== INFO GRID ===== */
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.info-item {
+    margin-bottom: 15px;
+}
+
+.info-label {
+    font-size: 12px;
+    color: var(--text-gray);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+}
+
+.info-value {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.info-value i {
+    color: var(--primary);
+    width: 20px;
+    text-align: center;
+}
+
+/* ===== DOCUMENT LINK ===== */
+.document-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(11, 79, 46, 0.1);
+    color: var(--primary);
+    text-decoration: none;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.document-link:hover {
+    background: var(--primary);
+    color: white;
+    transform: translateY(-2px);
+}
+
+.document-link i {
+    font-size: 16px;
+}
+
+/* ===== STATUS UPDATE FORM ===== */
+.status-update {
+    background: var(--bg-light);
+    border-radius: 15px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.status-update h4 {
+    color: var(--text-dark);
+    font-size: 16px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-update h4 i {
+    color: var(--primary);
+}
+
+.status-form {
+    display: flex;
+    gap: 15px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.status-form .form-group {
+    flex: 1;
+    min-width: 200px;
+}
+
+.status-form label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 13px;
+    color: var(--text-gray);
+    font-weight: 500;
+}
+
+.status-form select,
+.status-form input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.3s;
+    background: var(--bg-white);
+}
+
+.status-form select:focus,
+.status-form input:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(11, 79, 46, 0.1);
+}
+
+.btn-update {
+    background: var(--primary);
+    color: white;
+    padding: 10px 25px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 42px;
+}
+
+.btn-update:hover {
+    background: var(--primary-light);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+/* ===== ACTION BUTTONS ===== */
+.action-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.btn-print {
+    background: var(--bg-white);
+    color: var(--text-dark);
+    border: 2px solid var(--border);
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+}
+
+.btn-print:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    transform: translateY(-2px);
+}
+
+/* ===== TABLE CONTAINER ===== */
+.table-container {
+    overflow-x: auto;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 500px;
+}
+
+.data-table th {
+    text-align: left;
+    padding: 12px;
+    background: var(--bg-light);
+    color: var(--text-gray);
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--border);
+}
+
+.data-table td {
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-dark);
+    font-size: 14px;
+}
+
+.data-table tbody tr:hover {
+    background: var(--bg-light);
+}
+
+/* ===== NO DATA ===== */
+.no-data {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-gray);
+}
+
+.no-data i {
+    font-size: 48px;
+    margin-bottom: 10px;
+    opacity: 0.3;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1200px) {
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .student-info-card {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .student-meta {
+        flex-direction: column;
+        gap: 10px;
+        align-items: center;
+    }
+    
+    .status-form {
+        flex-direction: column;
+    }
+    
+    .status-form .form-group {
+        width: 100%;
+    }
+    
+    .btn-update {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+    }
+    
+    .btn-print {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+    .sidebar,
+    .back-btn,
+    .status-update,
+    .action-buttons,
+    .page-header .header-actions {
+        display: none !important;
+    }
+    
+    .main-content {
+        margin-left: 0 !important;
+        padding: 20px !important;
+    }
+    
+    .detail-card {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+        break-inside: avoid;
+    }
+    
+    .status-badge {
+        border: 1px solid #000 !important;
+    }
+    
+    .status-pending {
+        background: #fff3cd !important;
+        color: #856404 !important;
+    }
+    
+    .status-enrolled {
+        background: #d4edda !important;
+        color: #155724 !important;
+    }
+    
+    .status-rejected {
+        background: #f8d7da !important;
+        color: #721c24 !important;
+    }
+
+    /* Responsive */
+@media (max-width: 768px) {
+    .student-info-card {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .student-meta {
+        justify-content: center;
+    }
+    
+    .status-form {
+        flex-direction: column;
+    }
+    
+    .status-form .form-group {
+        width: 100%;
+    }
+    
+    .btn-update {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .action-buttons {
+        justify-content: center;
+    }
+    
+    .history-table {
+        min-width: 600px;
+    }
+}
+}
