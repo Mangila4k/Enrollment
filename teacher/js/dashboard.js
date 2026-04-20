@@ -23,6 +23,9 @@ statCards.forEach(card => {
     card.addEventListener('mouseenter', function() {
         this.style.transition = 'all 0.3s ease';
     });
+    card.addEventListener('mouseleave', function() {
+        this.style.transform = '';
+    });
 });
 
 // Add hover effect for action cards
@@ -30,6 +33,9 @@ const actionCards = document.querySelectorAll('.action-card');
 actionCards.forEach(card => {
     card.addEventListener('mouseenter', function() {
         this.style.transition = 'all 0.3s ease';
+    });
+    card.addEventListener('mouseleave', function() {
+        this.style.transform = '';
     });
 });
 
@@ -55,22 +61,78 @@ document.addEventListener('keydown', function(e) {
         e.preventDefault();
         window.location.href = 'grades.php';
     }
+    // Ctrl + P for Profile
+    if (e.ctrlKey && e.key === 'p') {
+        e.preventDefault();
+        window.location.href = 'profile.php';
+    }
 });
 
-// Refresh statistics periodically (every 30 seconds)
+// Toggle grade section function
+function toggleGrade(gradeId) {
+    const content = document.getElementById('content_' + gradeId);
+    const icon = document.getElementById('icon_' + gradeId);
+    
+    if (content) {
+        if (content.classList.contains('active')) {
+            content.classList.remove('active');
+            if (icon) icon.classList.remove('rotated');
+        } else {
+            content.classList.add('active');
+            if (icon) icon.classList.add('rotated');
+        }
+    }
+}
+
+// Auto-hide alerts after 5 seconds
+setTimeout(function() {
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(alert => {
+        if (alert) {
+            alert.style.opacity = '0';
+            alert.style.transition = 'opacity 0.3s';
+            setTimeout(() => {
+                if (alert.parentNode) alert.remove();
+            }, 300);
+        }
+    });
+}, 5000);
+
+// Refresh statistics periodically (every 30 seconds) - only if stats elements exist
 setInterval(function() {
-    fetch('get_stats.php')
-        .then(response => response.json())
-        .then(data => {
-            if (data.totalStudents) {
-                document.querySelector('.stat-number:first-child')?.textContent = data.totalStudents;
-            }
-            if (data.attendanceToday !== undefined) {
-                const attendanceElement = document.querySelector('.stats-grid .stat-card:last-child .stat-number');
-                if (attendanceElement) {
-                    attendanceElement.textContent = data.attendanceToday;
+    // Check if stats elements exist before trying to update
+    const statNumbers = document.querySelectorAll('.stat-number');
+    if (statNumbers.length > 0) {
+        fetch('get_stats.php')
+            .then(response => response.json())
+            .then(data => {
+                if (data.totalStudents && statNumbers[0]) {
+                    statNumbers[0].textContent = data.totalStudents;
                 }
-            }
-        })
-        .catch(error => console.log('Error refreshing stats:', error));
+                if (data.totalSections && statNumbers[1]) {
+                    statNumbers[1].textContent = data.totalSections;
+                }
+                if (data.totalSubjects && statNumbers[2]) {
+                    statNumbers[2].textContent = data.totalSubjects;
+                }
+                if (data.attendanceToday !== undefined && statNumbers[3]) {
+                    statNumbers[3].textContent = data.attendanceToday;
+                }
+            })
+            .catch(error => console.log('Error refreshing stats:', error));
+    }
 }, 30000);
+
+// Initialize any tooltips or additional UI elements
+document.addEventListener('DOMContentLoaded', function() {
+    // Add any initialization code here
+    console.log('Teacher Dashboard loaded');
+    
+    // Set current date in date badge if exists
+    const dateBadge = document.querySelector('.date-badge');
+    if (dateBadge) {
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const currentDate = new Date().toLocaleDateString('en-US', options);
+        dateBadge.innerHTML = `<i class="fas fa-calendar-alt"></i> ${currentDate}`;
+    }
+});

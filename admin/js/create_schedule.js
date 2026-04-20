@@ -13,7 +13,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Close sidebar when clicking outside on mobile
     document.addEventListener('click', (e) => {
         if (window.innerWidth <= 768) {
             if (sidebar && menuToggle) {
@@ -24,7 +23,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Auto-hide alerts after 5 seconds
+    // Auto-hide alerts
     setTimeout(function() {
         const alerts = document.querySelectorAll('.alert');
         alerts.forEach(alert => {
@@ -35,14 +34,72 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 300);
         });
     }, 5000);
+    
+    // ===== DAY TAB SWITCHING FUNCTIONALITY =====
+    initDayTabs();
 });
 
-// Data for validation (passed from PHP)
+// Function to initialize day tabs
+function initDayTabs() {
+    const dayTabs = document.querySelectorAll('.day-tab');
+    const daySchedules = document.querySelectorAll('.day-schedule');
+    
+    if (dayTabs.length === 0) {
+        return;
+    }
+    
+    // Remove any existing active classes
+    dayTabs.forEach(tab => {
+        tab.classList.remove('active');
+    });
+    daySchedules.forEach(schedule => {
+        schedule.classList.remove('active');
+    });
+    
+    // Set first tab as active by default
+    if (dayTabs.length > 0) {
+        dayTabs[0].classList.add('active');
+    }
+    if (daySchedules.length > 0) {
+        daySchedules[0].classList.add('active');
+    }
+    
+    // Add click event listeners to each tab
+    dayTabs.forEach(tab => {
+        tab.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const day = this.getAttribute('data-day');
+            
+            // Remove active class from all tabs
+            dayTabs.forEach(t => t.classList.remove('active'));
+            
+            // Add active class to clicked tab
+            this.classList.add('active');
+            
+            // Hide all day schedules
+            daySchedules.forEach(schedule => {
+                schedule.classList.remove('active');
+            });
+            
+            // Show the selected day schedule
+            const selectedSchedule = document.getElementById(`${day}-schedule`);
+            if (selectedSchedule) {
+                selectedSchedule.classList.add('active');
+            }
+        });
+    });
+}
+
+// Data from PHP
 const takenTeachers = window.takenTeachersData || {};
 const takenRooms = window.takenRoomsData || {};
-const takenSubjects = window.takenSubjectsData || [];
+const takenSubjectsByDay = window.takenSubjectsByDay || {};
+const sectionId = window.sectionId || 0;
+const currentSchoolYear = window.currentSchoolYear || '';
 
-// Get form elements
+// DOM elements
+const subjectSelect = document.getElementById('subject_id');
 const teacherSelect = document.getElementById('teacher_id');
 const daySelect = document.getElementById('day_id');
 const timeSlotSelect = document.getElementById('time_slot_id');
@@ -51,48 +108,36 @@ const quarterSelect = document.getElementById('quarter');
 const conflictWarning = document.getElementById('conflictWarning');
 const conflictMessage = document.getElementById('conflictMessage');
 
-// Function to check for conflicts
-function checkConflicts() {
-    if (!teacherSelect || !daySelect || !timeSlotSelect) return true;
-    
-    const teacherId = teacherSelect.value;
+// Function to filter subjects based on selected day
+function filterSubjects() {
     const dayId = daySelect.value;
-    const timeSlotId = timeSlotSelect.value;
-    const room = roomInput ? roomInput.value.trim() : '';
     
-    let hasConflict = false;
-    let message = '';
+    if (!dayId) return;
     
-    if (teacherId && dayId && timeSlotId) {
-        const key = dayId + '_' + timeSlotId;
+    const subjectsOnThisDay = takenSubjectsByDay[dayId] || [];
+    
+    for (let i = 0; i < subjectSelect.options.length; i++) {
+        const option = subjectSelect.options[i];
+        const subjectId = parseInt(option.value);
         
-        // Check teacher conflict
-        if (takenTeachers[key] && takenTeachers[key].includes(parseInt(teacherId))) {
-            hasConflict = true;
-            message = '⚠️ This teacher is already assigned to another class at this day and time!';
-        }
-        // Check room conflict
-        else if (room && takenRooms[key] && takenRooms[key].includes(room)) {
-            hasConflict = true;
-            message = '⚠️ This room is already occupied at this day and time!';
+        if (option.value && subjectsOnThisDay.includes(subjectId)) {
+            option.disabled = true;
+            option.style.color = '#94a3b8';
+            option.style.backgroundColor = '#f1f5f9';
+            if (!option.textContent.includes('(Already on this day)')) {
+                option.textContent = option.textContent + ' (Already on this day)';
+            }
+        } else if (option.value) {
+            option.disabled = false;
+            option.style.color = '';
+            option.style.backgroundColor = '';
+            option.textContent = option.textContent.replace(' (Already on this day)', '');
         }
     }
-    
-    if (hasConflict && conflictWarning && conflictMessage) {
-        conflictWarning.style.display = 'block';
-        conflictMessage.innerHTML = message;
-        return false;
-    } else if (conflictWarning) {
-        conflictWarning.style.display = 'none';
-        return true;
-    }
-    return true;
 }
 
 // Function to filter teachers based on selected day/time
 function filterTeachers() {
-    if (!teacherSelect || !daySelect || !timeSlotSelect) return;
-    
     const dayId = daySelect.value;
     const timeSlotId = timeSlotSelect.value;
     
@@ -101,7 +146,6 @@ function filterTeachers() {
     const key = dayId + '_' + timeSlotId;
     const busyTeacherIds = takenTeachers[key] || [];
     
-    // Loop through teacher options and disable busy ones
     for (let i = 0; i < teacherSelect.options.length; i++) {
         const option = teacherSelect.options[i];
         const teacherId = parseInt(option.value);
@@ -124,17 +168,32 @@ function filterTeachers() {
             }
         }
     }
-    
-    checkConflicts();
 }
 
-// Function to filter rooms (show warning for taken rooms)
-function checkRoomConflict() {
-    if (!daySelect || !timeSlotSelect || !roomInput) return true;
-    
+// Function to check teacher conflict
+function checkTeacherConflict() {
     const dayId = daySelect.value;
     const timeSlotId = timeSlotSelect.value;
-    const room = roomInput.value.trim();
+    const teacherId = teacherSelect.value;
+    
+    if (dayId && timeSlotId && teacherId) {
+        const key = dayId + '_' + timeSlotId;
+        const busyTeachers = takenTeachers[key] || [];
+        
+        if (busyTeachers.includes(parseInt(teacherId))) {
+            conflictWarning.style.display = 'block';
+            conflictMessage.innerHTML = '⚠️ This teacher is already assigned to another class at this day and time!';
+            return false;
+        }
+    }
+    return true;
+}
+
+// Function to check room conflict
+function checkRoomConflict() {
+    const dayId = daySelect.value;
+    const timeSlotId = timeSlotSelect.value;
+    const room = roomInput ? roomInput.value.trim() : '';
     
     if (dayId && timeSlotId && room) {
         const key = dayId + '_' + timeSlotId;
@@ -142,24 +201,33 @@ function checkRoomConflict() {
         
         if (busyRooms.includes(room)) {
             roomInput.style.borderColor = '#ef4444';
-            if (conflictWarning && conflictMessage) {
-                conflictWarning.style.display = 'block';
-                conflictMessage.innerHTML = '⚠️ This room is already occupied at this day and time!';
-            }
+            conflictWarning.style.display = 'block';
+            conflictMessage.innerHTML = '⚠️ This room is already occupied at this day and time!';
             return false;
-        } else {
-            roomInput.style.borderColor = '';
-            checkConflicts();
         }
     }
+    roomInput.style.borderColor = '';
     return true;
 }
 
-// Add event listeners if elements exist
+// Function to check all conflicts
+function checkConflicts() {
+    const teacherOk = checkTeacherConflict();
+    const roomOk = checkRoomConflict();
+    
+    if (teacherOk && roomOk) {
+        conflictWarning.style.display = 'none';
+    }
+    return teacherOk && roomOk;
+}
+
+// Event listeners
 if (daySelect) {
     daySelect.addEventListener('change', function() {
+        filterSubjects();
         filterTeachers();
         checkRoomConflict();
+        checkConflicts();
     });
 }
 
@@ -167,6 +235,7 @@ if (timeSlotSelect) {
     timeSlotSelect.addEventListener('change', function() {
         filterTeachers();
         checkRoomConflict();
+        checkConflicts();
     });
 }
 
@@ -180,15 +249,14 @@ if (roomInput) {
 
 if (quarterSelect) {
     quarterSelect.addEventListener('change', function() {
-        const sectionId = window.sectionId || '';
-        if (sectionId) {
-            window.location.href = 'create_schedule.php?section_id=' + sectionId + '&quarter=' + this.value;
-        }
+        filterSubjects();
+        filterTeachers();
     });
 }
 
-// Initial filter
-if (daySelect && daySelect.value && timeSlotSelect && timeSlotSelect.value) {
+// Initialize filters
+if (daySelect && daySelect.value) {
+    filterSubjects();
     filterTeachers();
 }
 
@@ -196,100 +264,14 @@ if (daySelect && daySelect.value && timeSlotSelect && timeSlotSelect.value) {
 const scheduleForm = document.getElementById('scheduleForm');
 if (scheduleForm) {
     scheduleForm.addEventListener('submit', function(e) {
-        if (!checkConflicts() || !checkRoomConflict()) {
+        if (!checkConflicts()) {
             e.preventDefault();
-            alert('Please resolve the schedule conflicts before submitting.');
+            alert('Please resolve the schedule conflicts before submitting.\n\nNote: Same subject can be scheduled on different days, but teachers and rooms cannot be double-booked.');
         }
     });
 }
 
-// Add hover effects to schedule items
-const scheduleItems = document.querySelectorAll('.schedule-item');
-scheduleItems.forEach(item => {
-    item.addEventListener('mouseenter', function() {
-        this.style.transform = 'translateX(5px)';
-        this.style.transition = 'transform 0.3s ease';
-    });
-    item.addEventListener('mouseleave', function() {
-        this.style.transform = 'translateX(0)';
-    });
-});
-
-// Copy section name functionality
-const sectionName = document.querySelector('.section-details h2');
-if (sectionName) {
-    sectionName.style.cursor = 'pointer';
-    sectionName.title = 'Click to copy section name';
-    sectionName.addEventListener('click', () => {
-        const text = sectionName.textContent;
-        navigator.clipboard.writeText(text).then(() => {
-            showToast('Section name copied!', 'success');
-        });
-    });
-}
-
-// Toast notification function
-function showToast(message, type = 'info') {
-    // Remove existing toast
-    const existingToast = document.querySelector('.toast-notification');
-    if (existingToast) existingToast.remove();
-    
-    const toast = document.createElement('div');
-    toast.className = `toast-notification toast-${type}`;
-    toast.innerHTML = `
-        <i class="fas fa-${type === 'success' ? 'check-circle' : 'info-circle'}"></i>
-        <span>${message}</span>
-    `;
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.classList.add('show');
-    }, 100);
-    
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
-}
-
-// Add toast styles
-const toastStyles = document.createElement('style');
-toastStyles.textContent = `
-    .toast-notification {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        background: white;
-        padding: 12px 20px;
-        border-radius: 10px;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        z-index: 10000;
-        transform: translateX(400px);
-        transition: transform 0.3s ease;
-        border-left: 4px solid;
-    }
-    
-    .toast-notification.show {
-        transform: translateX(0);
-    }
-    
-    .toast-success {
-        border-left-color: #10b981;
-    }
-    
-    .toast-success i {
-        color: #10b981;
-    }
-    
-    .toast-info {
-        border-left-color: #3b82f6;
-    }
-    
-    .toast-info i {
-        color: #3b82f6;
-    }
-`;
-document.head.appendChild(toastStyles);
+// Log loaded
+console.log('Schedule Management JS Loaded');
+console.log('Rule: Same subject can be scheduled on different days');
+console.log('Section ID:', sectionId);

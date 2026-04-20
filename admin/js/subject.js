@@ -54,7 +54,6 @@ function closeAddModal() {
 }
 
 function openEditModal(id) {
-    // Find subject data from the passed PHP data
     const subject = subjectData.subjects.find(s => s.id == id);
     if (subject) {
         document.getElementById('edit_subject_id').value = subject.id;
@@ -62,20 +61,6 @@ function openEditModal(id) {
         document.getElementById('edit_grade_id').value = subject.grade_id;
         document.getElementById('edit_description').value = subject.description || '';
         document.getElementById('editModal').classList.add('active');
-    } else {
-        // Fallback to fetch if data not available
-        fetch(`get_subject.php?id=${id}`)
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('edit_subject_id').value = data.id;
-                document.getElementById('edit_subject_name').value = data.subject_name;
-                document.getElementById('edit_grade_id').value = data.grade_id;
-                document.getElementById('edit_description').value = data.description || '';
-                document.getElementById('editModal').classList.add('active');
-            })
-            .catch(() => {
-                document.getElementById('editModal').classList.add('active');
-            });
     }
 }
 
@@ -90,19 +75,15 @@ function viewSubject(id) {
         document.getElementById('viewContent').innerHTML = `
             <div class="form-group">
                 <label>Subject Name</label>
-                <p style="background: var(--bg-light); padding: 10px; border-radius: 8px;">${escapeHtml(subject.subject_name)}</p>
+                <p style="background: #f8f9fa; padding: 10px; border-radius: 8px;">${escapeHtml(subject.subject_name)}</p>
             </div>
             <div class="form-group">
                 <label>Grade Level</label>
-                <p style="background: var(--bg-light); padding: 10px; border-radius: 8px;">${escapeHtml(gradeName)}</p>
+                <p style="background: #f8f9fa; padding: 10px; border-radius: 8px;">${escapeHtml(gradeName)}</p>
             </div>
             <div class="form-group">
                 <label>Description</label>
-                <p style="background: var(--bg-light); padding: 10px; border-radius: 8px;">${escapeHtml(subject.description) || 'No description provided.'}</p>
-            </div>
-            <div class="form-group">
-                <label>Attendance Records</label>
-                <p style="background: var(--bg-light); padding: 10px; border-radius: 8px;">${subject.attendance_count || 0} record(s)</p>
+                <p style="background: #f8f9fa; padding: 10px; border-radius: 8px;">${escapeHtml(subject.description) || 'No description provided.'}</p>
             </div>
         `;
         document.getElementById('viewModal').classList.add('active');
@@ -145,28 +126,6 @@ window.onclick = function(event) {
         event.target.classList.remove('active');
     }
 }
-
-// Add animation to stat cards
-const statCards = document.querySelectorAll('.stat-card');
-statCards.forEach(card => {
-    card.addEventListener('mouseenter', function() {
-        this.style.transform = 'translateY(-5px)';
-    });
-    card.addEventListener('mouseleave', function() {
-        this.style.transform = 'translateY(0)';
-    });
-});
-
-// Grade card hover effect
-const gradeCards = document.querySelectorAll('.grade-card');
-gradeCards.forEach(card => {
-    card.addEventListener('mouseenter', function() {
-        this.style.transform = 'translateY(-5px)';
-    });
-    card.addEventListener('mouseleave', function() {
-        this.style.transform = 'translateY(0)';
-    });
-});
 
 // Form validation for add subject
 const addForm = document.getElementById('addSubjectForm');

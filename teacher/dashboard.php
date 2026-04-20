@@ -63,15 +63,8 @@ foreach($grade_levels as $grade) {
     }
 }
 
-// Get today's attendance count
-$today = date('Y-m-d');
-$attendance_today_stmt = $conn->prepare("
-    SELECT COUNT(*) as count 
-    FROM attendance 
-    WHERE date = ?
-");
-$attendance_today_stmt->execute([$today]);
-$attendance_today = $attendance_today_stmt->fetch(PDO::FETCH_ASSOC)['count'];
+// REMOVED attendance query - set to 0 since table doesn't exist
+$attendance_today = 0;
 
 // Get total students in teacher's sections
 $total_students = 0;
@@ -80,7 +73,6 @@ if(count($sections) > 0) {
         $student_count_stmt = $conn->prepare("
             SELECT COUNT(*) as count 
             FROM enrollments e
-            JOIN users u ON e.student_id = u.id
             WHERE e.grade_id = ? 
             AND e.status = 'Enrolled'
         ");
@@ -220,11 +212,11 @@ foreach($subjects_by_grade as $subjects) {
 
                 <div class="stat-card">
                     <div class="stat-header">
-                        <h3>Today's Attendance</h3>
-                        <div class="stat-icon"><i class="fas fa-calendar-check"></i></div>
+                        <h3>Grade Levels</h3>
+                        <div class="stat-icon"><i class="fas fa-graduation-cap"></i></div>
                     </div>
-                    <div class="stat-number"><?php echo $attendance_today; ?></div>
-                    <div class="stat-label">Records today</div>
+                    <div class="stat-number"><?php echo count($grade_levels); ?></div>
+                    <div class="stat-label">Available levels</div>
                 </div>
             </div>
 
@@ -353,10 +345,10 @@ foreach($subjects_by_grade as $subjects) {
             
             if (content.classList.contains('active')) {
                 content.classList.remove('active');
-                icon.classList.remove('rotated');
+                if (icon) icon.classList.remove('rotated');
             } else {
                 content.classList.add('active');
-                icon.classList.add('rotated');
+                if (icon) icon.classList.add('rotated');
             }
         }
         

@@ -54,7 +54,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
         $errors[] = "Role is required";
     }
     
-    // Check if email already exists using PDO
+    // Check if email already exists
     if(empty($errors)) {
         $check = $conn->prepare("SELECT id FROM users WHERE email = ?");
         $check->execute([$email]);
@@ -80,7 +80,8 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
             // Hash password
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
             
-            $stmt = $conn->prepare("INSERT INTO users (id_number, fullname, email, password, role, is_approved, status, created_at) VALUES (?, ?, ?, ?, ?, 1, 'approved', NOW())");
+            // Fixed: Removed is_approved column (doesn't exist in your table)
+            $stmt = $conn->prepare("INSERT INTO users (id_number, fullname, email, password, role, status, created_at) VALUES (?, ?, ?, ?, ?, 'approved', NOW())");
             $stmt->execute([$id_number, $fullname, $email, $hashed_password, $role]);
             
             $_SESSION['success_message'] = "Account created successfully!";

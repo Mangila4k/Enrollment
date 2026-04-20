@@ -17,58 +17,26 @@
 .page-header h1 {
     font-size: 28px;
     font-weight: 700;
-    color: var(--text-dark);
+    color: #333;
 }
 
 .page-header p {
-    color: var(--text-gray);
+    color: #666;
     font-size: 14px;
     margin-top: 5px;
 }
 
 .date-badge {
-    background: var(--bg-white);
+    background: white;
     padding: 10px 20px;
     border-radius: 40px;
     font-size: 14px;
     font-weight: 500;
-    color: var(--primary);
-    box-shadow: var(--shadow);
+    color: #0B4F2E;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     display: flex;
     align-items: center;
     gap: 8px;
-}
-
-.date-badge i {
-    color: var(--secondary);
-}
-
-/* ===== WELCOME CARD ===== */
-.welcome-card {
-    background: linear-gradient(135deg, var(--primary), var(--primary-light));
-    border-radius: 20px;
-    padding: 25px 30px;
-    color: white;
-    margin-bottom: 30px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 15px;
-}
-
-.welcome-text h2 {
-    font-size: 22px;
-    font-weight: 700;
-    margin-bottom: 8px;
-}
-
-.welcome-text p {
-    opacity: 0.9;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
 }
 
 /* ===== STATS GRID ===== */
@@ -80,10 +48,10 @@
 }
 
 .stat-card {
-    background: var(--bg-white);
+    background: white;
     border-radius: 16px;
     padding: 20px;
-    box-shadow: var(--shadow);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     transition: all 0.3s;
     position: relative;
     overflow: hidden;
@@ -91,7 +59,7 @@
 
 .stat-card:hover {
     transform: translateY(-3px);
-    box-shadow: var(--shadow-md);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
 }
 
 .stat-card::after {
@@ -117,13 +85,14 @@
     font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
-    color: var(--text-gray);
+    color: #666;
+    margin: 0;
 }
 
 .stat-icon {
     width: 40px;
     height: 40px;
-    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    background: linear-gradient(135deg, #0B4F2E, #1a7a42);
     border-radius: 10px;
     display: flex;
     align-items: center;
@@ -134,13 +103,13 @@
 .stat-number {
     font-size: 28px;
     font-weight: 800;
-    color: var(--text-dark);
+    color: #333;
     margin-bottom: 5px;
 }
 
 .stat-label {
     font-size: 12px;
-    color: var(--text-gray);
+    color: #666;
 }
 
 /* ===== QUICK ACTIONS ===== */
@@ -160,14 +129,15 @@
 .section-header h3 {
     font-size: 18px;
     font-weight: 600;
-    color: var(--text-dark);
+    color: #333;
     display: flex;
     align-items: center;
     gap: 10px;
+    margin: 0;
 }
 
 .section-header h3 i {
-    color: var(--primary);
+    color: #0B4F2E;
 }
 
 .actions-grid {
@@ -177,28 +147,28 @@
 }
 
 .action-card {
-    background: var(--bg-white);
+    background: white;
     border-radius: 16px;
     padding: 20px;
     text-decoration: none;
-    color: var(--text-dark);
+    color: #333;
     display: flex;
     align-items: center;
     gap: 15px;
     transition: all 0.3s;
-    border: 1px solid var(--border);
+    border: 1px solid #e0e0e0;
 }
 
 .action-card:hover {
     transform: translateY(-5px);
-    border-color: var(--primary);
-    box-shadow: var(--shadow-lg);
+    border-color: #0B4F2E;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
 }
 
 .action-icon {
     width: 50px;
     height: 50px;
-    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    background: linear-gradient(135deg, #0B4F2E, #1a7a42);
     border-radius: 14px;
     display: flex;
     align-items: center;
@@ -215,7 +185,7 @@
 
 .action-info p {
     font-size: 11px;
-    color: var(--text-gray);
+    color: #666;
 }
 
 /* ===== DASHBOARD GRID ===== */
@@ -228,10 +198,10 @@
 
 /* ===== INFO CARDS ===== */
 .info-card {
-    background: var(--bg-white);
+    background: white;
     border-radius: 20px;
     padding: 25px;
-    box-shadow: var(--shadow);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
 .info-card h3 {
@@ -242,12 +212,12 @@
     align-items: center;
     gap: 10px;
     padding-bottom: 15px;
-    border-bottom: 1px solid var(--border);
-    color: var(--text-dark);
+    border-bottom: 1px solid #e0e0e0;
+    color: #333;
 }
 
 .info-card h3 i {
-    color: var(--primary);
+    color: #0B4F2E;
 }
 
 /* ===== SECTION LIST ===== */
@@ -257,7 +227,7 @@
 
 .section-item {
     padding: 15px 0;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid #e0e0e0;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -270,13 +240,13 @@
 }
 
 .section-info h4 {
-    color: var(--text-dark);
+    color: #333;
     font-size: 16px;
     margin-bottom: 5px;
 }
 
 .section-info p {
-    color: var(--text-gray);
+    color: #666;
     font-size: 13px;
     display: flex;
     align-items: center;
@@ -289,7 +259,7 @@
     font-size: 12px;
     font-weight: 600;
     background: rgba(11, 79, 46, 0.1);
-    color: var(--primary);
+    color: #0B4F2E;
 }
 
 /* ===== SUBJECTS ACCORDION ===== */
@@ -300,15 +270,15 @@
 }
 
 .grade-section {
-    background: var(--bg-white);
-    border: 1px solid var(--border);
+    background: white;
+    border: 1px solid #e0e0e0;
     border-radius: 12px;
     overflow: hidden;
     transition: all 0.3s;
 }
 
 .grade-section:hover {
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
 .grade-header {
@@ -316,14 +286,14 @@
     justify-content: space-between;
     align-items: center;
     padding: 15px 20px;
-    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    background: linear-gradient(135deg, #0B4F2E, #1a7a42);
     color: white;
     cursor: pointer;
     transition: all 0.3s;
 }
 
 .grade-header:hover {
-    background: linear-gradient(135deg, var(--primary-light), var(--primary));
+    background: linear-gradient(135deg, #1a7a42, #0B4F2E);
     padding-left: 25px;
 }
 
@@ -383,7 +353,7 @@
 
 .subject-item {
     padding: 12px 20px;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid #e0e0e0;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -397,58 +367,30 @@
 }
 
 .subject-item:hover {
-    background: var(--bg-light);
+    background: #f8f9fa;
 }
 
 .subject-info h4 {
-    color: var(--text-dark);
+    color: #333;
     font-size: 15px;
     font-weight: 600;
     margin-bottom: 4px;
 }
 
-.subject-info p {
-    color: var(--text-gray);
-    font-size: 12px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
 .subject-badge {
     background: rgba(11, 79, 46, 0.1);
-    color: var(--primary);
+    color: #0B4F2E;
     font-size: 11px;
     padding: 4px 10px;
     border-radius: 20px;
     font-weight: 600;
 }
 
-/* Grade colors for visual distinction */
-.grade-section:nth-child(1) .grade-header {
-    background: linear-gradient(135deg, #0B4F2E, #1a7a42);
-}
-.grade-section:nth-child(2) .grade-header {
-    background: linear-gradient(135deg, #1a7a42, #2a9d5a);
-}
-.grade-section:nth-child(3) .grade-header {
-    background: linear-gradient(135deg, #2a9d5a, #3abf6e);
-}
-.grade-section:nth-child(4) .grade-header {
-    background: linear-gradient(135deg, #3abf6e, #4ad082);
-}
-.grade-section:nth-child(5) .grade-header {
-    background: linear-gradient(135deg, #4ad082, #5ae196);
-}
-.grade-section:nth-child(6) .grade-header {
-    background: linear-gradient(135deg, #5ae196, #6ef2aa);
-}
-
 /* ===== NO DATA ===== */
 .no-data {
     text-align: center;
     padding: 40px;
-    color: var(--text-gray);
+    color: #666;
 }
 
 .no-data i {
@@ -457,8 +399,26 @@
     margin-bottom: 10px;
 }
 
-.no-data p {
-    margin-top: 5px;
+/* ===== ALERTS ===== */
+.alert {
+    padding: 15px 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.alert-success {
+    background: #d4edda;
+    color: #155724;
+    border-left: 4px solid #28a745;
+}
+
+.alert-error {
+    background: #fee2e2;
+    color: #dc2626;
+    border-left: 4px solid #dc2626;
 }
 
 /* ===== RESPONSIVE ===== */
@@ -490,11 +450,6 @@
         align-items: flex-start;
     }
     
-    .welcome-card {
-        flex-direction: column;
-        text-align: center;
-    }
-    
     .section-item {
         flex-direction: column;
         text-align: center;
@@ -512,10 +467,6 @@
         flex-direction: column;
         text-align: center;
         gap: 8px;
-    }
-    
-    .subject-info p {
-        justify-content: center;
     }
     
     .subject-badge {

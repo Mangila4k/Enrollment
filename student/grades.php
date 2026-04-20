@@ -193,6 +193,7 @@ $grades_data_json = json_encode($grades_data);
                         <li><a href="schedule.php"><i class="fas fa-calendar-alt"></i> Class Schedule</a></li>
                         <li><a href="grades.php" class="active"><i class="fas fa-star"></i> My Grades</a></li>
                         <li><a href="enrollment_history.php"><i class="fas fa-history"></i> Enrollment History</a></li>
+                        <li><a href="requirements.php"><i class="fas fa-file-alt"></i> Requirements</a></li>
                     </ul>
                 </div>
 
@@ -200,7 +201,6 @@ $grades_data_json = json_encode($grades_data);
                     <div class="nav-section-title">ACCOUNT</div>
                     <ul class="nav-items">
                         <li><a href="profile.php"><i class="fas fa-user-circle"></i> My Profile</a></li>
-                        <li><a href="settings.php"><i class="fas fa-cog"></i> Settings</a></li>
                         <li><a href="../auth/logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
                     </ul>
                 </div>

@@ -31,14 +31,166 @@ $stmt = $conn->prepare($query);
 $stmt->execute([$admin_id]);
 $admin = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// Check if profile_picture column exists, if not, add it
+// Check if required columns exist
 try {
     $check_column = $conn->query("SHOW COLUMNS FROM users LIKE 'profile_picture'");
     if($check_column->rowCount() == 0) {
         $conn->exec("ALTER TABLE users ADD COLUMN profile_picture VARCHAR(255) DEFAULT NULL");
     }
+    
+    $check_email_verified = $conn->query("SHOW COLUMNS FROM users LIKE 'email_verified'");
+    if($check_email_verified->rowCount() == 0) {
+        $conn->exec("ALTER TABLE users ADD COLUMN email_verified TINYINT(1) DEFAULT 0");
+    }
+    
+    // Add pending email columns for email change verification
+    $check_pending_email = $conn->query("SHOW COLUMNS FROM users LIKE 'pending_email'");
+    if($check_pending_email->rowCount() == 0) {
+        $conn->exec("ALTER TABLE users ADD COLUMN pending_email VARCHAR(255) DEFAULT NULL");
+        $conn->exec("ALTER TABLE users ADD COLUMN pending_email_code VARCHAR(10) DEFAULT NULL");
+        $conn->exec("ALTER TABLE users ADD COLUMN pending_email_expires DATETIME DEFAULT NULL");
+    }
 } catch(PDOException $e) {
-    // Column might already exist or other error
+    // Column might already exist
+}
+
+// Handle send verification email for email change
+if(isset($_POST['send_email_verification'])) {
+    $new_email = trim($_POST['new_email']);
+    
+    if(empty($new_email)) {
+        $error_message = "Please enter an email address.";
+    } elseif(!filter_var($new_email, FILTER_VALIDATE_EMAIL)) {
+        $error_message = "Invalid email format.";
+    } else {
+        // Check if email already exists for another user
+        $check_email = $conn->prepare("SELECT id FROM users WHERE email = ? AND id != ?");
+        $check_email->execute([$new_email, $admin_id]);
+        
+        if($check_email->rowCount() > 0) {
+            $error_message = "Email address already registered to another user.";
+        } else {
+            require_once '../config/email_config.php';
+            
+            // Generate verification code
+            $verification_code = sprintf("%06d", mt_rand(100000, 999999));
+            $expires = date('Y-m-d H:i:s', strtotime('+1 hour'));
+            
+            // Store pending email and code in database
+            $update = $conn->prepare("UPDATE users SET pending_email = ?, pending_email_code = ?, pending_email_expires = ? WHERE id = ?");
+            $update->execute([$new_email, $verification_code, $expires, $admin_id]);
+            
+            // Send verification email to NEW email address
+            $subject = "Email Change Verification - PLSNHS";
+            $message = "
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset='UTF-8'>
+                <title>Email Change Verification</title>
+                <style>
+                    body { font-family: Arial, sans-serif; }
+                    .container { max-width: 550px; margin: 0 auto; padding: 20px; }
+                    .header { background: #0B4F2E; color: white; padding: 20px; text-align: center; }
+                    .code { font-size: 42px; font-weight: bold; color: #0B4F2E; padding: 20px; background: #f0f0f0; text-align: center; letter-spacing: 8px; margin: 20px 0; font-family: monospace; }
+                </style>
+            </head>
+            <body>
+                <div class='container'>
+                    <div class='header'>
+                        <h2>Email Change Request</h2>
+                    </div>
+                    <p>Hello <strong>" . htmlspecialchars($admin['fullname']) . "</strong>,</p>
+                    <p>You requested to change your email address to: <strong>$new_email</strong></p>
+                    <p>Please enter the verification code below to confirm this change:</p>
+                    <div class='code'>$verification_code</div>
+                    <p>This code will expire in <strong>1 hour</strong>.</p>
+                    <p>If you didn't request this change, please ignore this email.</p>
+                </div>
+            </body>
+            </html>
+            ";
+            
+            $mailSent = sendCustomEmail($new_email, $admin['fullname'], $subject, $message);
+            
+            if($mailSent) {
+                $_SESSION['pending_email_change'] = true;
+                $_SESSION['success_message'] = "A verification code has been sent to the new email address: $new_email. Please check your inbox to confirm the change.";
+                header("Location: profile.php");
+                exit();
+            } else {
+                $error_message = "Failed to send verification email. Please try again.";
+            }
+        }
+    }
+}
+
+// Handle verify new email code
+if(isset($_POST['verify_new_email'])) {
+    $verification_code = trim($_POST['verification_code']);
+    
+    // Get pending email info
+    $stmt = $conn->prepare("SELECT pending_email, pending_email_code, pending_email_expires FROM users WHERE id = ?");
+    $stmt->execute([$admin_id]);
+    $pending = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if($pending['pending_email'] && $pending['pending_email_code']) {
+        $expires = new DateTime($pending['pending_email_expires']);
+        $now = new DateTime();
+        
+        if($now > $expires) {
+            $error_message = "Verification code has expired. Please request a new email change.";
+            // Clear pending email
+            $clear = $conn->prepare("UPDATE users SET pending_email = NULL, pending_email_code = NULL, pending_email_expires = NULL WHERE id = ?");
+            $clear->execute([$admin_id]);
+        } elseif($pending['pending_email_code'] == $verification_code) {
+            // Update email to new email
+            $new_email = $pending['pending_email'];
+            $update = $conn->prepare("UPDATE users SET email = ?, pending_email = NULL, pending_email_code = NULL, pending_email_expires = NULL WHERE id = ?");
+            $update->execute([$new_email, $admin_id]);
+            
+            // Update session
+            $_SESSION['user']['email'] = $new_email;
+            
+            $_SESSION['success_message'] = "Email changed successfully to: $new_email";
+            header("Location: profile.php");
+            exit();
+        } else {
+            $error_message = "Invalid verification code. Please try again.";
+        }
+    } else {
+        $error_message = "No pending email change request found.";
+    }
+}
+
+// Handle cancel email change
+if(isset($_POST['cancel_email_change'])) {
+    $clear = $conn->prepare("UPDATE users SET pending_email = NULL, pending_email_code = NULL, pending_email_expires = NULL WHERE id = ?");
+    $clear->execute([$admin_id]);
+    unset($_SESSION['pending_email_change']);
+    $_SESSION['success_message'] = "Email change request cancelled.";
+    header("Location: profile.php");
+    exit();
+}
+
+// Handle send verification email for initial email verification
+if(isset($_POST['send_verification'])) {
+    require_once '../config/email_config.php';
+    
+    $verification_code = sprintf("%06d", mt_rand(100000, 999999));
+    $verification_expires = date('Y-m-d H:i:s', strtotime('+24 hours'));
+    
+    $update = $conn->prepare("UPDATE users SET verification_code = ?, verification_expires = ? WHERE id = ?");
+    $update->execute([$verification_code, $verification_expires, $admin_id]);
+    
+    if(sendVerificationCode($admin['email'], $admin['fullname'], $verification_code)) {
+        $_SESSION['temp_email'] = $admin['email'];
+        $_SESSION['success_message'] = "A verification code has been sent to your email. Please check your inbox.";
+        header("Location: verify_email.php");
+        exit();
+    } else {
+        $error_message = "Failed to send verification email. Please try again.";
+    }
 }
 
 // Handle profile picture upload
@@ -49,27 +201,22 @@ if(isset($_POST['upload_profile_pic'])) {
         $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
         
         if(in_array($ext, $allowed)) {
-            // Create uploads directory if not exists
             $upload_dir = "../uploads/profile_pictures/";
             if(!is_dir($upload_dir)) {
                 mkdir($upload_dir, 0777, true);
             }
             
-            // Generate unique filename
             $new_filename = "admin_" . $admin_id . "_" . time() . "." . $ext;
             $upload_path = $upload_dir . $new_filename;
             $db_path = "uploads/profile_pictures/" . $new_filename;
             
-            // Delete old profile picture if exists
             if(!empty($admin['profile_picture']) && file_exists("../" . $admin['profile_picture'])) {
                 unlink("../" . $admin['profile_picture']);
             }
             
-            // Upload new file
             if(move_uploaded_file($_FILES['profile_picture']['tmp_name'], $upload_path)) {
                 $update_stmt = $conn->prepare("UPDATE users SET profile_picture = ? WHERE id = ?");
                 if($update_stmt->execute([$db_path, $admin_id])) {
-                    // Update session with profile picture path
                     $_SESSION['user']['profile_picture'] = $db_path;
                     $_SESSION['success_message'] = "Profile picture updated successfully!";
                     header("Location: profile.php");
@@ -95,7 +242,6 @@ if(isset($_GET['remove_pic'])) {
     }
     $update_stmt = $conn->prepare("UPDATE users SET profile_picture = NULL WHERE id = ?");
     if($update_stmt->execute([$admin_id])) {
-        // Update session
         $_SESSION['user']['profile_picture'] = null;
         $_SESSION['success_message'] = "Profile picture removed successfully!";
         header("Location: profile.php");
@@ -110,7 +256,6 @@ if(isset($_POST['toggle_2fa'])) {
     $action = $_POST['action'];
     
     if($action == 'enable') {
-        // Start 2FA verification for enabling
         start2FAVerification(
             $admin_id,
             $admin['email'],
@@ -119,7 +264,6 @@ if(isset($_POST['toggle_2fa'])) {
             'profile.php'
         );
     } elseif($action == 'disable') {
-        // Start 2FA verification for disabling
         start2FAVerification(
             $admin_id,
             $admin['email'],
@@ -133,12 +277,9 @@ if(isset($_POST['toggle_2fa'])) {
 // Handle 2FA verification completion
 if(isset($_SESSION['2fa_verified']) && $_SESSION['2fa_verified'] === true) {
     if(time() - $_SESSION['2fa_verified_time'] < 600) {
-        // Verification is still valid
-        // The actual enable/disable was handled in verify_2fa.php
         unset($_SESSION['2fa_verified']);
         unset($_SESSION['2fa_verified_time']);
         
-        // Refresh admin data
         $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
         $stmt->execute([$admin_id]);
         $admin = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -148,36 +289,17 @@ if(isset($_SESSION['2fa_verified']) && $_SESSION['2fa_verified'] === true) {
     }
 }
 
-// Handle profile update
+// Handle profile update (name and ID only, email handled separately)
 if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_profile'])) {
     $fullname = trim($_POST['fullname']);
-    $email = trim($_POST['email']);
     $id_number = !empty($_POST['id_number']) ? trim($_POST['id_number']) : null;
     
-    // Validation
     $errors = [];
     
     if(empty($fullname)) {
         $errors[] = "Full name is required";
     }
     
-    if(empty($email)) {
-        $errors[] = "Email address is required";
-    } elseif(!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $errors[] = "Invalid email format";
-    }
-    
-    // Check if email already exists (excluding current admin)
-    if(empty($errors)) {
-        $check_email = $conn->prepare("SELECT id FROM users WHERE email = ? AND id != ?");
-        $check_email->execute([$email, $admin_id]);
-        
-        if($check_email->rowCount() > 0) {
-            $errors[] = "Email address already registered to another user";
-        }
-    }
-    
-    // Check if ID number already exists (if provided and excluding current admin)
     if(empty($errors) && $id_number) {
         $check_id = $conn->prepare("SELECT id FROM users WHERE id_number = ? AND id != ?");
         $check_id->execute([$id_number, $admin_id]);
@@ -187,15 +309,12 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_profile'])) {
         }
     }
     
-    // If no errors, update the profile
     if(empty($errors)) {
-        $update_query = "UPDATE users SET fullname = ?, email = ?, id_number = ? WHERE id = ?";
+        $update_query = "UPDATE users SET fullname = ?, id_number = ? WHERE id = ?";
         $update_stmt = $conn->prepare($update_query);
         
-        if($update_stmt->execute([$fullname, $email, $id_number, $admin_id])) {
-            // Update session
+        if($update_stmt->execute([$fullname, $id_number, $admin_id])) {
             $_SESSION['user']['fullname'] = $fullname;
-            $_SESSION['user']['email'] = $email;
             $_SESSION['user']['id_number'] = $id_number;
             
             $_SESSION['success_message'] = "Profile updated successfully!";
@@ -206,7 +325,6 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_profile'])) {
         }
     }
     
-    // If there are errors, store them
     if(!empty($errors)) {
         $error_message = implode("<br>", $errors);
     }
@@ -220,7 +338,6 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['change_password'])) {
     
     $errors = [];
     
-    // Verify current password
     if(empty($current_password)) {
         $errors[] = "Current password is required";
     } else {
@@ -239,10 +356,8 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['change_password'])) {
         $errors[] = "New passwords do not match";
     }
     
-    // If no errors, check if 2FA is enabled
     if(empty($errors)) {
         if($admin['two_factor_enabled'] == 1) {
-            // Start 2FA verification for password change
             start2FAVerification(
                 $admin_id,
                 $admin['email'],
@@ -251,7 +366,6 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['change_password'])) {
                 'profile.php'
             );
         } else {
-            // Proceed with password change without 2FA
             $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
             $update_query = "UPDATE users SET password = ? WHERE id = ?";
             $update_stmt = $conn->prepare($update_query);
@@ -266,16 +380,27 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['change_password'])) {
         }
     }
     
-    // If there are errors, store them
     if(!empty($errors)) {
         $error_message = implode("<br>", $errors);
     }
+}
+
+// Check for pending email change
+$has_pending_email = false;
+$pending_email = '';
+$stmt = $conn->prepare("SELECT pending_email FROM users WHERE id = ? AND pending_email IS NOT NULL");
+$stmt->execute([$admin_id]);
+if($stmt->rowCount() > 0) {
+    $has_pending_email = true;
+    $pending_email = $stmt->fetch(PDO::FETCH_ASSOC)['pending_email'];
 }
 
 $account_created = $admin['created_at'];
 $two_factor_enabled = $admin['two_factor_enabled'] ?? 0;
 $two_factor_last_used = $admin['two_factor_last_used'] ?? null;
 $profile_picture = $admin['profile_picture'] ?? null;
+$email_verified = $admin['email_verified'] ?? 0;
+$current_email = $admin['email'];
 
 // Get profile picture for sidebar
 $sidebar_profile_pic = $_SESSION['user']['profile_picture'] ?? $profile_picture;
@@ -287,14 +412,169 @@ $sidebar_profile_pic = $_SESSION['user']['profile_picture'] ?? $profile_picture;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Profile - PLSNHS | Placido L. Señor National High School</title>
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <!-- Base CSS -->
     <link rel="stylesheet" href="css/base.css">
-    <!-- Profile CSS -->
     <link rel="stylesheet" href="css/profile.css">
+    <style>
+        .verification-status {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .verification-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+        
+        .verification-header i {
+            font-size: 24px;
+        }
+        
+        .verification-header h3 {
+            font-size: 18px;
+            margin: 0;
+            color: var(--text-dark);
+        }
+        
+        .verification-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        
+        .verification-badge.verified {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .verification-badge.unverified {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .verification-info {
+            color: var(--text-gray);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .btn-verify {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            margin-top: 15px;
+        }
+        
+        .btn-verify:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+        
+        .btn-verify i {
+            margin-right: 8px;
+        }
+        
+        .profile-info-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            padding: 15px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .profile-info-item:last-child {
+            border-bottom: none;
+        }
+        
+        .info-icon {
+            width: 40px;
+            height: 40px;
+            background: rgba(11, 79, 46, 0.1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+        }
+        
+        .info-content {
+            flex: 1;
+        }
+        
+        .info-label {
+            font-size: 12px;
+            color: var(--text-gray);
+            margin-bottom: 4px;
+        }
+        
+        .info-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+        
+        .verified-badge {
+            color: #28a745;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+        
+        .unverified-badge {
+            color: #dc3545;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+        
+        .email-change-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .email-change-form {
+            margin-top: 15px;
+        }
+        
+        .email-change-form .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .pending-email-alert {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .pending-email-alert i {
+            color: #856404;
+            margin-right: 10px;
+        }
+        
+        .verify-code-input {
+            font-size: 24px;
+            letter-spacing: 8px;
+            text-align: center;
+            font-family: monospace;
+        }
+    </style>
 </head>
 <body>
     <div class="app-container">
@@ -413,8 +693,15 @@ $sidebar_profile_pic = $_SESSION['user']['profile_picture'] ?? $profile_picture;
                         <div class="profile-info-item">
                             <div class="info-icon"><i class="fas fa-envelope"></i></div>
                             <div class="info-content">
-                                <div class="info-label">Email Address</div>
-                                <div class="info-value"><?php echo htmlspecialchars($admin['email']); ?></div>
+                                <div class="info-label">Current Email Address</div>
+                                <div class="info-value">
+                                    <?php echo htmlspecialchars($current_email); ?>
+                                    <?php if($email_verified == 1): ?>
+                                        <span class="verified-badge"><i class="fas fa-check-circle"></i> Verified</span>
+                                    <?php else: ?>
+                                        <span class="unverified-badge"><i class="fas fa-times-circle"></i> Unverified</span>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                         </div>
 
@@ -438,6 +725,81 @@ $sidebar_profile_pic = $_SESSION['user']['profile_picture'] ?? $profile_picture;
 
                 <!-- Right Column - Edit Forms -->
                 <div>
+                    <!-- Email Verification Section -->
+                    <div class="verification-status">
+                        <div class="verification-header">
+                            <i class="fas fa-envelope"></i>
+                            <h3>Email Verification</h3>
+                        </div>
+                        
+                        <?php if($email_verified == 1): ?>
+                            <div class="verification-badge verified">
+                                <i class="fas fa-check-circle"></i> Verified Email
+                            </div>
+                            <div class="verification-info">
+                                <p><i class="fas fa-check-circle" style="color: #28a745;"></i> Your email address has been verified.</p>
+                                <p style="margin-top: 10px;">This adds an extra layer of security to your account.</p>
+                            </div>
+                        <?php else: ?>
+                            <div class="verification-badge unverified">
+                                <i class="fas fa-exclamation-triangle"></i> Email Not Verified
+                            </div>
+                            <div class="verification-info">
+                                <p><i class="fas fa-info-circle"></i> Your email address has not been verified yet.</p>
+                                <p style="margin-top: 10px;">Verifying your email helps secure your account and ensures you receive important notifications.</p>
+                                <form method="POST" style="margin-top: 15px;">
+                                    <button type="submit" name="send_verification" class="btn-verify">
+                                        <i class="fas fa-paper-plane"></i> Verify Email Now
+                                    </button>
+                                </form>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Email Change Section -->
+                    <div class="verification-status">
+                        <div class="verification-header">
+                            <i class="fas fa-exchange-alt"></i>
+                            <h3>Change Email Address</h3>
+                        </div>
+                        
+                        <?php if($has_pending_email): ?>
+                            <div class="pending-email-alert">
+                                <i class="fas fa-clock"></i> 
+                                <strong>Pending Email Change:</strong> Verification sent to <strong><?php echo htmlspecialchars($pending_email); ?></strong>
+                                <p style="margin-top: 10px; font-size: 13px;">Please check your inbox and enter the verification code below to complete the email change.</p>
+                            </div>
+                            
+                            <form method="POST" class="email-change-form">
+                                <div class="form-group">
+                                    <label>Verification Code</label>
+                                    <input type="text" name="verification_code" class="verify-code-input" placeholder="000000" maxlength="6" pattern="[0-9]{6}" required>
+                                </div>
+                                <div style="display: flex; gap: 10px;">
+                                    <button type="submit" name="verify_new_email" class="btn-verify" style="background: #28a745;">
+                                        <i class="fas fa-check"></i> Verify & Change Email
+                                    </button>
+                                    <button type="submit" name="cancel_email_change" class="btn-verify" style="background: #dc3545;">
+                                        <i class="fas fa-times"></i> Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        <?php else: ?>
+                            <form method="POST" class="email-change-form">
+                                <div class="form-group">
+                                    <label>New Email Address</label>
+                                    <input type="email" name="new_email" placeholder="Enter your new email address" required>
+                                    <small style="color: #666; display: block; margin-top: 5px;">
+                                        <i class="fas fa-info-circle"></i> A verification code will be sent to the new email address for confirmation.
+                                    </small>
+                                </div>
+                                <button type="submit" name="send_email_verification" class="btn-verify">
+                                    <i class="fas fa-paper-plane"></i> Send Verification Code
+                                </button>
+                            </form>
+                        <?php endif; ?>
+                    </div>
+
                     <!-- 2FA Section -->
                     <div class="twofa-section">
                         <h3><i class="fas fa-shield-alt"></i> Two-Factor Authentication</h3>
@@ -481,18 +843,13 @@ $sidebar_profile_pic = $_SESSION['user']['profile_picture'] ?? $profile_picture;
                         </div>
                     </div>
 
-                    <!-- Edit Profile Form -->
+                    <!-- Edit Profile Form (Name and ID only) -->
                     <div class="form-card">
                         <h3><i class="fas fa-user-edit"></i> Edit Profile Information</h3>
                         <form method="POST" action="">
                             <div class="form-group">
                                 <label>Full Name <span>*</span></label>
                                 <input type="text" name="fullname" value="<?php echo htmlspecialchars($admin['fullname']); ?>" required>
-                            </div>
-
-                            <div class="form-group">
-                                <label>Email Address <span>*</span></label>
-                                <input type="email" name="email" value="<?php echo htmlspecialchars($admin['email']); ?>" required>
                             </div>
 
                             <div class="form-group">
@@ -612,7 +969,6 @@ $sidebar_profile_pic = $_SESSION['user']['profile_picture'] ?? $profile_picture;
     </div>
 
     <script>
-        // Image modal functions
         function openImageModal() {
             document.getElementById('imageModal').classList.add('active');
         }
@@ -632,7 +988,6 @@ $sidebar_profile_pic = $_SESSION['user']['profile_picture'] ?? $profile_picture;
             }
         }
 
-        // Close modal when clicking outside
         window.onclick = function(event) {
             const modal = document.getElementById('imageModal');
             if (event.target === modal) {
@@ -640,7 +995,13 @@ $sidebar_profile_pic = $_SESSION['user']['profile_picture'] ?? $profile_picture;
             }
         }
 
-        // Toggle password fields
+        // Auto-format code input
+        document.querySelectorAll('.verify-code-input').forEach(input => {
+            input.addEventListener('input', function(e) {
+                this.value = this.value.replace(/[^0-9]/g, '').slice(0, 6);
+            });
+        });
+
         const changePasswordCheckbox = document.getElementById('change_password_checkbox');
         const passwordFields = document.getElementById('passwordFields');
         const currentPassword = document.getElementById('current_password');
@@ -675,7 +1036,6 @@ $sidebar_profile_pic = $_SESSION['user']['profile_picture'] ?? $profile_picture;
             const strengthBar = document.getElementById('passwordStrengthBar');
             const strengthText = document.getElementById('passwordStrengthText');
             const matchText = document.getElementById('passwordMatchText');
-            
             if(strengthBar) strengthBar.style.width = '0';
             if(strengthText) strengthText.innerHTML = '<i class="fas fa-info-circle"></i> Minimum 6 characters';
             if(matchText) matchText.innerHTML = '<i class="fas fa-info-circle"></i> Re-enter new password';
@@ -684,46 +1044,33 @@ $sidebar_profile_pic = $_SESSION['user']['profile_picture'] ?? $profile_picture;
         function checkPasswordStrength() {
             const password = newPassword.value;
             let strength = 0;
-            let strengthLabel = '';
-            let strengthColor = '';
-
-            if (password.length >= 6) strength += 1;
-            if (password.match(/[a-z]+/)) strength += 1;
-            if (password.match(/[A-Z]+/)) strength += 1;
-            if (password.match(/[0-9]+/)) strength += 1;
-            if (password.match(/[$@#&!]+/)) strength += 1;
+            if (password.length >= 6) strength++;
+            if (password.match(/[a-z]+/)) strength++;
+            if (password.match(/[A-Z]+/)) strength++;
+            if (password.match(/[0-9]+/)) strength++;
+            if (password.match(/[$@#&!]+/)) strength++;
 
             const strengthBar = document.getElementById('passwordStrengthBar');
             const strengthText = document.getElementById('passwordStrengthText');
 
-            switch(strength) {
-                case 0:
-                case 1:
-                    if(strengthBar) strengthBar.style.width = '20%';
-                    if(strengthBar) strengthBar.style.backgroundColor = '#ef4444';
-                    strengthLabel = 'Weak';
-                    strengthColor = 'strength-weak';
-                    break;
-                case 2:
-                case 3:
-                    if(strengthBar) strengthBar.style.width = '60%';
-                    if(strengthBar) strengthBar.style.backgroundColor = '#f59e0b';
-                    strengthLabel = 'Medium';
-                    strengthColor = 'strength-medium';
-                    break;
-                case 4:
-                case 5:
-                    if(strengthBar) strengthBar.style.width = '100%';
-                    if(strengthBar) strengthBar.style.backgroundColor = '#10b981';
-                    strengthLabel = 'Strong';
-                    strengthColor = 'strength-strong';
-                    break;
+            if (password.length === 0) {
+                strengthBar.style.width = '0';
+                strengthText.innerHTML = '<i class="fas fa-info-circle"></i> Minimum 6 characters';
+                return;
             }
 
-            if (password.length > 0 && strengthText) {
-                strengthText.innerHTML = `<i class="fas fa-shield-alt"></i> <span class="${strengthColor}">Password strength: ${strengthLabel}</span>`;
-            } else if (strengthText) {
-                strengthText.innerHTML = '<i class="fas fa-info-circle"></i> Minimum 6 characters';
+            if (strength <= 2) {
+                strengthBar.style.width = '33%';
+                strengthBar.style.backgroundColor = '#ef4444';
+                strengthText.innerHTML = '<i class="fas fa-shield-alt"></i> Weak password';
+            } else if (strength <= 4) {
+                strengthBar.style.width = '66%';
+                strengthBar.style.backgroundColor = '#f59e0b';
+                strengthText.innerHTML = '<i class="fas fa-shield-alt"></i> Medium password';
+            } else {
+                strengthBar.style.width = '100%';
+                strengthBar.style.backgroundColor = '#10b981';
+                strengthText.innerHTML = '<i class="fas fa-shield-alt"></i> Strong password';
             }
         }
 
@@ -732,14 +1079,12 @@ $sidebar_profile_pic = $_SESSION['user']['profile_picture'] ?? $profile_picture;
             const confirm = confirmPassword.value;
             const matchText = document.getElementById('passwordMatchText');
 
-            if (confirm.length > 0 && matchText) {
-                if (password === confirm) {
-                    matchText.innerHTML = '<i class="fas fa-check-circle" style="color: #10b981;"></i> <span style="color: #10b981;">Passwords match</span>';
-                } else {
-                    matchText.innerHTML = '<i class="fas fa-exclamation-circle" style="color: #ef4444;"></i> <span style="color: #ef4444;">Passwords do not match</span>';
-                }
-            } else if (matchText) {
+            if (confirm.length === 0) {
                 matchText.innerHTML = '<i class="fas fa-info-circle"></i> Re-enter new password';
+            } else if (password === confirm) {
+                matchText.innerHTML = '<i class="fas fa-check-circle" style="color: #10b981;"></i> <span style="color: #10b981;">Passwords match</span>';
+            } else {
+                matchText.innerHTML = '<i class="fas fa-exclamation-circle" style="color: #ef4444;"></i> <span style="color: #ef4444;">Passwords do not match</span>';
             }
         }
 
@@ -752,15 +1097,16 @@ $sidebar_profile_pic = $_SESSION['user']['profile_picture'] ?? $profile_picture;
             confirmPassword.addEventListener('input', checkPasswordMatch);
         }
 
-        // Auto-hide alerts
         setTimeout(function() {
             document.querySelectorAll('.alert').forEach(alert => {
-                alert.style.opacity = '0';
                 setTimeout(() => {
-                    alert.style.display = 'none';
-                }, 300);
+                    alert.style.opacity = '0';
+                    setTimeout(() => {
+                        if(alert.parentNode) alert.remove();
+                    }, 300);
+                }, 3000);
             });
-        }, 5000);
+        }, 1000);
     </script>
 </body>
 </html>

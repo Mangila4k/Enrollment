@@ -53,25 +53,16 @@ $stmt->execute([$student_id]);
 $enrollments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $current_enrollment = !empty($enrollments) ? $enrollments[0] : null;
 
-// Get student's attendance records
-$attendance_query = "
-    SELECT a.*, sub.subject_name
-    FROM attendance a
-    LEFT JOIN subjects sub ON a.subject_id = sub.id
-    WHERE a.student_id = ?
-    ORDER BY a.date DESC
-    LIMIT 5
-";
-$stmt = $conn->prepare($attendance_query);
-$stmt->execute([$student_id]);
-$attendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
+// REMOVED: attendance query - attendance table doesn't exist
+// Set empty array for attendance
+$attendance = [];
+$total_attendance = 0;
 
 // Calculate statistics
 $account_created = $student['created_at'];
 $days_active = floor((time() - strtotime($account_created)) / (60 * 60 * 24));
 
 $total_enrollments = count($enrollments);
-$total_attendance = count($attendance);
 
 // Calculate age from birthdate
 $age = null;
@@ -327,15 +318,15 @@ function shouldShowStrand($grade_name) {
         </div>
         <?php endif; ?>
 
-        <!-- Statistics Cards -->
+        <!-- Statistics Cards (Attendance removed) -->
         <div class="stats-mini-grid">
             <div class="stat-mini-card">
                 <div class="stat-mini-number"><?php echo $total_enrollments; ?></div>
                 <div class="stat-mini-label">Total Enrollments</div>
             </div>
             <div class="stat-mini-card">
-                <div class="stat-mini-number"><?php echo $total_attendance; ?></div>
-                <div class="stat-mini-label">Attendance Records</div>
+                <div class="stat-mini-number">0</div>
+                <div class="stat-mini-label">Requirements Submitted</div>
             </div>
             <div class="stat-mini-card">
                 <div class="stat-mini-number"><?php echo $days_active; ?></div>

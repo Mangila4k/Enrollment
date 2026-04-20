@@ -33,8 +33,25 @@ if(isset($_SESSION['user'])) {
     exit();
 }
 
-// ========== NORMAL LOGIN ==========
+// Check for success messages from URL parameters
+if(isset($_GET['registered'])) {
+    $success = "Registration successful! Please wait for admin approval.";
+}
+if(isset($_GET['pending'])) {
+    $success = "Your account is pending approval. You will be notified once approved.";
+}
+if(isset($_GET['2fa_verified'])) {
+    $success = "Two-factor authentication successful! Welcome back.";
+}
+if(isset($_GET['reset_success'])) {
+    $success = "Password reset successful! You can now login with your new password.";
+}
 
+// Check for remember me cookie
+$remember_email = isset($_COOKIE['user_email']) ? $_COOKIE['user_email'] : '';
+$remember_checked = isset($_COOKIE['user_remember']) ? 'checked' : '';
+
+// ========== NORMAL LOGIN ==========
 if(isset($_POST['login'])){
     $email = trim($_POST['email']);
     $password = $_POST['password'];
@@ -55,7 +72,7 @@ if(isset($_POST['login'])){
             
             if(password_verify($password, $user['password'])){
                 
-                // Check user status
+                // Check user status first
                 if($user['status'] == 'pending') {
                     $error = "Your account is pending approval from the administrator. Please wait for approval.";
                 } elseif($user['status'] == 'rejected') {
@@ -63,110 +80,126 @@ if(isset($_POST['login'])){
                     $error = "Your account has been rejected." . $reason . " Please contact the administrator for more information.";
                 } elseif($user['status'] == 'approved' || $user['status'] == 'active') {
                     
-                    // Check if 2FA is enabled for this user (only for Admin and Registrar)
-                    if(($user['role'] == 'Admin' || $user['role'] == 'Registrar') && isset($user['two_factor_enabled']) && $user['two_factor_enabled'] == 1) {
-                        // Generate 6-digit code
-                        $code = sprintf("%06d", mt_rand(1, 999999));
-                        
-                        // Store in session with expiration (5 minutes)
-                        $_SESSION['2fa_user_id'] = $user['id'];
-                        $_SESSION['2fa_code'] = $code;
-                        $_SESSION['2fa_expires'] = time() + 300; // 5 minutes
-                        $_SESSION['2fa_email'] = $user['email'];
-                        $_SESSION['2fa_name'] = $user['fullname'];
-                        
-                        // Send email with code
-                        $to = $user['email'];
-                        $subject = "Your 2FA Verification Code - PLSNHS";
-                        
-                        $message = "
-                        <html>
-                        <head>
-                            <title>2FA Verification Code</title>
-                        </head>
-                        <body style='font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4;'>
-                                <div style='max-width: 600px; margin: 20px auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1);'>
-                                    <div style='background: linear-gradient(135deg, #0B4F2E, #1a7a42); padding: 30px; text-align: center;'>
-                                        <h1 style='color: white; margin: 0; font-size: 28px;'>PLSNHS</h1>
-                                        <p style='color: #FFD700; margin: 5px 0 0; font-size: 16px;'>Two-Factor Authentication</p>
-                                    </div>
-                                    
-                                    <div style='padding: 30px;'>
-                                        <p style='font-size: 16px; color: #333;'>Hello <strong>" . htmlspecialchars($user['fullname']) . "</strong>,</p>
-                                        <p style='font-size: 16px; color: #333;'>You have requested to log in to your account. Please use the following verification code:</p>
+                    // ========== EMAIL VERIFICATION CHECK ==========
+                    // Only Students need email verification. Admin, Registrar, and Teacher can bypass.
+                    $needs_verification = false;
+                    
+                    if(isset($user['email_verified']) && $user['email_verified'] == 0) {
+                        // Check if user role requires email verification
+                        if($user['role'] == 'Student') {
+                            $needs_verification = true;
+                            $error = "Please verify your email address first. Check your inbox for the verification code. <a href='resend_code.php?email=" . urlencode($email) . "' style='color:#0B4F2E;'>Resend code</a>";
+                        }
+                        // Admin, Registrar, Teacher can log in without email verification
+                    }
+                    
+                    // If no verification error, proceed to login
+                    if(!$needs_verification) {
+                        // Check if 2FA is enabled for this user (only for Admin and Registrar)
+                        if(($user['role'] == 'Admin' || $user['role'] == 'Registrar') && isset($user['two_factor_enabled']) && $user['two_factor_enabled'] == 1) {
+                            // Generate 6-digit code
+                            $code = sprintf("%06d", mt_rand(1, 999999));
+                            
+                            // Store in session with expiration (5 minutes)
+                            $_SESSION['2fa_user_id'] = $user['id'];
+                            $_SESSION['2fa_code'] = $code;
+                            $_SESSION['2fa_expires'] = time() + 300; // 5 minutes
+                            $_SESSION['2fa_email'] = $user['email'];
+                            $_SESSION['2fa_name'] = $user['fullname'];
+                            
+                            // Send email with code
+                            $to = $user['email'];
+                            $subject = "Your 2FA Verification Code - PLSNHS";
+                            
+                            $message = "
+                            <html>
+                            <head>
+                                <title>2FA Verification Code</title>
+                            </head>
+                            <body style='font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4;'>
+                                    <div style='max-width: 600px; margin: 20px auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1);'>
+                                        <div style='background: linear-gradient(135deg, #0B4F2E, #1a7a42); padding: 30px; text-align: center;'>
+                                            <h1 style='color: white; margin: 0; font-size: 28px;'>PLSNHS</h1>
+                                            <p style='color: #FFD700; margin: 5px 0 0; font-size: 16px;'>Two-Factor Authentication</p>
+                                        </div>
                                         
-                                        <div style='background: #f8f9fa; padding: 20px; border-radius: 8px; text-align: center; margin: 25px 0; border: 2px dashed #0B4F2E;'>
-                                            <div style='font-size: 42px; font-weight: bold; color: #0B4F2E; letter-spacing: 8px; font-family: monospace;'>
-                                                " . $code . "
+                                        <div style='padding: 30px;'>
+                                            <p style='font-size: 16px; color: #333;'>Hello <strong>" . htmlspecialchars($user['fullname']) . "</strong>,</p>
+                                            <p style='font-size: 16px; color: #333;'>You have requested to log in to your account. Please use the following verification code:</p>
+                                            
+                                            <div style='background: #f8f9fa; padding: 20px; border-radius: 8px; text-align: center; margin: 25px 0; border: 2px dashed #0B4F2E;'>
+                                                <div style='font-size: 42px; font-weight: bold; color: #0B4F2E; letter-spacing: 8px; font-family: monospace;'>
+                                                    " . $code . "
+                                                </div>
+                                                <p style='color: #666; margin-top: 10px;'>This code will expire in 5 minutes</p>
                                             </div>
-                                            <p style='color: #666; margin-top: 10px;'>This code will expire in 5 minutes</p>
+                                            
+                                            <div style='background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0;'>
+                                                <p style='color: #856404; margin: 0; font-size: 14px;'>
+                                                    <strong>⚠️ Security Notice:</strong> Never share this code with anyone. Our staff will never ask for your verification code.
+                                                </p>
+                                            </div>
+                                            
+                                            <p style='color: #666; font-size: 14px; margin-top: 25px;'>If you didn't attempt to log in, please ignore this email and contact the administrator immediately.</p>
                                         </div>
                                         
-                                        <div style='background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0;'>
-                                            <p style='color: #856404; margin: 0; font-size: 14px;'>
-                                                <strong>⚠️ Security Notice:</strong> Never share this code with anyone. Our staff will never ask for your verification code.
-                                            </p>
+                                        <div style='background: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #e0e0e0;'>
+                                            <p style='color: #999; font-size: 12px; margin: 0;'>&copy; " . date('Y') . " Placido L. Señor Senior High School. All rights reserved.</p>
+                                            <p style='color: #999; font-size: 12px; margin: 5px 0 0;'>Langtad, City of Naga, Cebu</p>
                                         </div>
-                                        
-                                        <p style='color: #666; font-size: 14px; margin-top: 25px;'>If you didn't attempt to log in, please ignore this email and contact the administrator immediately.</p>
                                     </div>
-                                    
-                                    <div style='background: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #e0e0e0;'>
-                                        <p style='color: #999; font-size: 12px; margin: 0;'>&copy; " . date('Y') . " Placido L. Señor Senior High School. All rights reserved.</p>
-                                        <p style='color: #999; font-size: 12px; margin: 5px 0 0;'>Langtad, City of Naga, Cebu</p>
-                                    </div>
-                                </div>
-                            </body>
-                            </html>
-                            ";
-                        
-                        $headers = "MIME-Version: 1.0" . "\r\n";
-                        $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-                        $headers .= "From: PLSNHS 2FA <noreply@plsshs.edu.ph>" . "\r\n";
-                        
-                        if(mail($to, $subject, $message, $headers)) {
-                            header("Location: verify_2fa.php");
+                                </body>
+                                </html>
+                                ";
+                            
+                            $headers = "MIME-Version: 1.0" . "\r\n";
+                            $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+                            $headers .= "From: PLSNHS 2FA <noreply@plsshs.edu.ph>" . "\r\n";
+                            
+                            if(mail($to, $subject, $message, $headers)) {
+                                header("Location: verify_2fa.php");
+                                exit();
+                            } else {
+                                $error = "Failed to send verification code. Please try again.";
+                            }
+                        } else {
+                            // Normal login without 2FA
+                            $_SESSION['user'] = $user;
+                            
+                            // Set remember me cookie (30 days)
+                            if($remember) {
+                                setcookie('user_email', $email, time() + (86400 * 30), "/");
+                                setcookie('user_remember', 'true', time() + (86400 * 30), "/");
+                            } else {
+                                // Clear remember me cookies if not checked
+                                if(isset($_COOKIE['user_email'])) {
+                                    setcookie('user_email', '', time() - 3600, "/");
+                                }
+                                if(isset($_COOKIE['user_remember'])) {
+                                    setcookie('user_remember', '', time() - 3600, "/");
+                                }
+                            }
+                            
+                            // Redirect based on role
+                            switch($user['role']){
+                                case 'Admin':
+                                    header("Location: ../admin/dashboard.php");
+                                    break;
+                                case 'Registrar':
+                                    header("Location: ../registrar/dashboard.php");
+                                    break;
+                                case 'Teacher':
+                                    header("Location: ../teacher/dashboard.php");
+                                    break;
+                                case 'Student':
+                                    header("Location: ../student/dashboard.php");
+                                    break;
+                                default:
+                                    header("Location: ../student/dashboard.php");
+                                    break;
+                            }
                             exit();
-                        } else {
-                            $error = "Failed to send verification code. Please try again.";
                         }
-                    } else {
-                        // Normal login without 2FA
-                        $_SESSION['user'] = $user;
-                        
-                        // Set remember me cookie (30 days)
-                        if($remember) {
-                            setcookie('user_email', $email, time() + (86400 * 30), "/");
-                            setcookie('user_remember', 'true', time() + (86400 * 30), "/");
-                        } else {
-                            // Clear remember me cookies if not checked
-                            if(isset($_COOKIE['user_email'])) {
-                                setcookie('user_email', '', time() - 3600, "/");
-                            }
-                            if(isset($_COOKIE['user_remember'])) {
-                                setcookie('user_remember', '', time() - 3600, "/");
-                            }
-                        }
-                        
-                        // Redirect based on role
-                        switch($user['role']){
-                            case 'Admin':
-                                header("Location: ../admin/dashboard.php");
-                                break;
-                            case 'Registrar':
-                                header("Location: ../registrar/dashboard.php");
-                                break;
-                            case 'Teacher':
-                                header("Location: ../teacher/dashboard.php");
-                                break;
-                            case 'Student':
-                                header("Location: ../student/dashboard.php");
-                                break;
-                            default:
-                                header("Location: ../student/dashboard.php");
-                                break;
-                        }
-                        exit();
                     }
                 } else {
                     $error = "Account status unknown. Please contact administrator.";
@@ -179,21 +212,6 @@ if(isset($_POST['login'])){
         }
     }
 }
-
-// Check for success messages from URL parameters
-if(isset($_GET['registered'])) {
-    $success = "Registration successful! Please wait for admin approval.";
-}
-if(isset($_GET['pending'])) {
-    $success = "Your account is pending approval. You will be notified once approved.";
-}
-if(isset($_GET['2fa_verified'])) {
-    $success = "Two-factor authentication successful! Welcome back.";
-}
-
-// Check for remember me cookie
-$remember_email = isset($_COOKIE['user_email']) ? $_COOKIE['user_email'] : '';
-$remember_checked = isset($_COOKIE['user_remember']) ? 'checked' : '';
 ?>
 
 <!DOCTYPE html>
@@ -345,6 +363,11 @@ $remember_checked = isset($_COOKIE['user_remember']) ? 'checked' : '';
             font-size: 18px;
         }
 
+        .alert a {
+            color: #0B4F2E;
+            text-decoration: underline;
+        }
+
         /* Form Styles */
         .input-group {
             margin-bottom: 25px;
@@ -406,6 +429,24 @@ $remember_checked = isset($_COOKIE['user_remember']) ? 'checked' : '';
 
         .toggle-password:hover {
             color: #0B4F2E;
+        }
+
+        /* Forgot Password Link */
+        .forgot-password {
+            text-align: right;
+            margin: -15px 0 20px;
+        }
+
+        .forgot-password a {
+            color: #666;
+            text-decoration: none;
+            font-size: 13px;
+            transition: color 0.3s;
+        }
+
+        .forgot-password a:hover {
+            color: #0B4F2E;
+            text-decoration: underline;
         }
 
         .remember-me {
@@ -630,14 +671,14 @@ $remember_checked = isset($_COOKIE['user_remember']) ? 'checked' : '';
                 <?php if(!empty($error)): ?>
                     <div class="alert alert-error">
                         <i class="fas fa-exclamation-circle"></i> 
-                        <?php echo htmlspecialchars($error); ?>
+                        <?php echo $error; ?>
                     </div>
                 <?php endif; ?>
                 
                 <?php if(!empty($success)): ?>
                     <div class="alert alert-success">
                         <i class="fas fa-check-circle"></i> 
-                        <?php echo htmlspecialchars($success); ?>
+                        <?php echo $success; ?>
                     </div>
                 <?php endif; ?>
                 
@@ -659,6 +700,13 @@ $remember_checked = isset($_COOKIE['user_remember']) ? 'checked' : '';
                                 <i class="fas fa-eye"></i>
                             </button>
                         </div>
+                    </div>
+                    
+                    <!-- FORGOT PASSWORD LINK -->
+                    <div class="forgot-password">
+                        <a href="forgot_password.php">
+                            <i class="fas fa-key"></i> Forgot Password?
+                        </a>
                     </div>
                     
                     <div class="remember-me">
@@ -716,7 +764,7 @@ $remember_checked = isset($_COOKIE['user_remember']) ? 'checked' : '';
         // Toggle password visibility for login
         function togglePassword() {
             const passwordInput = document.getElementById('password');
-            const toggleBtn = document.querySelector('#password')?.closest('.input-wrapper')?.querySelector('.toggle-password i');
+            const toggleBtn = document.querySelector('.toggle-password i');
             
             if (passwordInput && toggleBtn) {
                 if (passwordInput.type === 'password') {

@@ -70,6 +70,7 @@
     box-shadow: var(--shadow);
     transition: all 0.3s ease;
     overflow: hidden;
+    position: relative;
 }
 
 .stat-card::before {
@@ -566,7 +567,7 @@
     color: #f59e0b;
 }
 
-/* Action Buttons Cell */
+/* ===== ACTION BUTTONS - COLOR ON HOVER ONLY ===== */
 .data-table .action-btns {
     display: flex;
     gap: 8px;
@@ -583,29 +584,80 @@
     justify-content: center;
     text-decoration: none;
     transition: all 0.3s;
-    color: var(--text-gray);
-    background: var(--bg-light);
-    border: none;
+    background: #f5f5f5;
+    color: #666;
+    border: 1px solid #e0e0e0;
     cursor: pointer;
 }
 
-.data-table .action-btn:hover {
-    transform: translateY(-2px);
+/* View Button - Blue on hover */
+.data-table .action-btn.view {
+    background: #f5f5f5;
+    color: #666;
+    border: 1px solid #e0e0e0;
 }
 
 .data-table .action-btn.view:hover {
-    background: var(--primary);
+    background: #3b82f6;
     color: white;
+    border-color: #3b82f6;
+    transform: translateY(-2px);
+}
+
+/* Edit Button - Orange on hover */
+.data-table .action-btn.edit {
+    background: #f5f5f5;
+    color: #666;
+    border: 1px solid #e0e0e0;
 }
 
 .data-table .action-btn.edit:hover {
-    background: var(--info);
+    background: #f59e0b;
     color: white;
+    border-color: #f59e0b;
+    transform: translateY(-2px);
+}
+
+/* Delete Button - Red on hover */
+.data-table .action-btn.delete {
+    background: #f5f5f5;
+    color: #666;
+    border: 1px solid #e0e0e0;
 }
 
 .data-table .action-btn.delete:hover {
-    background: var(--danger);
+    background: #ef4444;
     color: white;
+    border-color: #ef4444;
+    transform: translateY(-2px);
+}
+
+/* Approve Button - Green on hover */
+.data-table .action-btn.approve {
+    background: #f5f5f5;
+    color: #666;
+    border: 1px solid #e0e0e0;
+}
+
+.data-table .action-btn.approve:hover {
+    background: #10b981;
+    color: white;
+    border-color: #10b981;
+    transform: translateY(-2px);
+}
+
+/* Reject Button - Red on hover */
+.data-table .action-btn.reject {
+    background: #f5f5f5;
+    color: #666;
+    border: 1px solid #e0e0e0;
+}
+
+.data-table .action-btn.reject:hover {
+    background: #dc2626;
+    color: white;
+    border-color: #dc2626;
+    transform: translateY(-2px);
 }
 
 /* Empty State in Table */
@@ -720,7 +772,7 @@
     display: inline-block;
 }
 
-/* Action Buttons */
+/* Action Buttons - Neutral by default, color on hover (for non-table buttons) */
 .action-btns {
     display: flex;
     gap: 8px;
@@ -737,57 +789,49 @@
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    border: none;
+    border: 1px solid #e0e0e0;
     cursor: pointer;
+    background: #f5f5f5;
+    color: #666;
 }
 
-.btn-view {
-    background: var(--info);
-    color: white;
-}
-
+/* View Button - Blue on hover */
 .btn-view:hover {
-    background: #2563eb;
+    background: #3b82f6;
+    color: white;
+    border-color: #3b82f6;
     transform: translateY(-2px);
 }
 
-.btn-edit {
-    background: var(--warning);
-    color: white;
-}
-
+/* Edit Button - Orange on hover */
 .btn-edit:hover {
-    background: #d97706;
+    background: #f59e0b;
+    color: white;
+    border-color: #f59e0b;
     transform: translateY(-2px);
 }
 
-.btn-delete {
-    background: var(--danger);
-    color: white;
-}
-
+/* Delete Button - Red on hover */
 .btn-delete:hover {
-    background: #dc2626;
+    background: #ef4444;
+    color: white;
+    border-color: #ef4444;
     transform: translateY(-2px);
 }
 
-.btn-approve {
-    background: var(--success);
-    color: white;
-}
-
+/* Approve Button - Green on hover */
 .btn-approve:hover {
-    background: #059669;
+    background: #10b981;
+    color: white;
+    border-color: #10b981;
     transform: translateY(-2px);
 }
 
-.btn-reject {
-    background: var(--danger);
-    color: white;
-}
-
+/* Reject Button - Red on hover */
 .btn-reject:hover {
     background: #dc2626;
+    color: white;
+    border-color: #dc2626;
     transform: translateY(-2px);
 }
 

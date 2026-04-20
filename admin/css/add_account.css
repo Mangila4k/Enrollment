@@ -12,10 +12,10 @@
 
 /* ===== FORM CARD ===== */
 .form-card {
-    background: var(--bg-white);
+    background: white;
     border-radius: 30px;
     padding: 35px;
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 20px 35px rgba(0, 0, 0, 0.05);
     transition: transform 0.3s ease;
 }
 
@@ -24,7 +24,7 @@
 }
 
 .form-card h3 {
-    color: var(--text-dark);
+    color: #333;
     font-size: 22px;
     font-weight: 700;
     margin-bottom: 30px;
@@ -32,11 +32,11 @@
     align-items: center;
     gap: 12px;
     padding-bottom: 20px;
-    border-bottom: 2px solid var(--border);
+    border-bottom: 2px solid #e0e0e0;
 }
 
 .form-card h3 i {
-    color: var(--primary);
+    color: #0B4F2E;
     font-size: 26px;
 }
 
@@ -56,7 +56,7 @@
 .form-group label {
     display: block;
     margin-bottom: 8px;
-    color: var(--text-gray);
+    color: #666;
     font-weight: 600;
     font-size: 13px;
     text-transform: uppercase;
@@ -64,7 +64,7 @@
 }
 
 .form-group label span {
-    color: var(--danger);
+    color: #dc3545;
     margin-left: 3px;
 }
 
@@ -76,24 +76,24 @@
 .form-group select {
     width: 100%;
     padding: 14px 18px;
-    border: 2px solid var(--border);
+    border: 2px solid #e0e0e0;
     border-radius: 14px;
     font-size: 15px;
     transition: all 0.3s;
-    background: var(--bg-light);
+    background: #f8f9fa;
     font-family: 'Inter', sans-serif;
 }
 
 .form-group input:focus,
 .form-group select:focus {
-    border-color: var(--primary);
-    background: var(--bg-white);
+    border-color: #0B4F2E;
+    background: white;
     outline: none;
     box-shadow: 0 0 0 4px rgba(11, 79, 46, 0.1);
 }
 
 .form-group input::placeholder {
-    color: var(--text-gray);
+    color: #999;
     opacity: 0.7;
 }
 
@@ -101,14 +101,14 @@
 .form-hint {
     margin-top: 8px;
     font-size: 12px;
-    color: var(--text-gray);
+    color: #666;
     display: flex;
     align-items: center;
     gap: 6px;
 }
 
 .form-hint i {
-    color: var(--primary);
+    color: #0B4F2E;
     font-size: 12px;
 }
 
@@ -121,19 +121,19 @@
     background: none;
     border: none;
     cursor: pointer;
-    color: var(--text-gray);
+    color: #999;
     transition: color 0.3s;
 }
 
 .toggle-password:hover {
-    color: var(--primary);
+    color: #0B4F2E;
 }
 
 /* ===== PASSWORD STRENGTH ===== */
 .password-strength {
     margin-top: 10px;
     height: 4px;
-    background: var(--border);
+    background: #e0e0e0;
     border-radius: 2px;
     overflow: hidden;
 }
@@ -147,7 +147,7 @@
 .strength-text {
     font-size: 12px;
     margin-top: 5px;
-    color: var(--text-gray);
+    color: #666;
     display: flex;
     align-items: center;
     gap: 5px;
@@ -159,11 +159,11 @@
     border-radius: 20px;
     padding: 25px;
     margin: 30px 0 25px;
-    border: 1px solid var(--border);
+    border: 1px solid #e0e0e0;
 }
 
 .preview-card h4 {
-    color: var(--text-dark);
+    color: #333;
     font-size: 16px;
     font-weight: 600;
     margin-bottom: 20px;
@@ -173,7 +173,7 @@
 }
 
 .preview-card h4 i {
-    color: var(--primary);
+    color: #0B4F2E;
 }
 
 .preview-content {
@@ -181,15 +181,15 @@
     align-items: center;
     gap: 20px;
     padding: 20px;
-    background: var(--bg-white);
+    background: white;
     border-radius: 16px;
-    box-shadow: var(--shadow);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .preview-avatar {
     width: 70px;
     height: 70px;
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    background: linear-gradient(135deg, #0B4F2E, #1a7a42);
     border-radius: 18px;
     display: flex;
     align-items: center;
@@ -197,7 +197,7 @@
     color: white;
     font-size: 32px;
     font-weight: 700;
-    box-shadow: var(--shadow-md);
+    box-shadow: 0 8px 16px rgba(11, 79, 46, 0.2);
     flex-shrink: 0;
 }
 
@@ -206,7 +206,7 @@
 }
 
 .preview-info h5 {
-    color: var(--text-dark);
+    color: #333;
     font-size: 18px;
     font-weight: 600;
     margin-bottom: 8px;
@@ -243,7 +243,7 @@
 
 .preview-email {
     font-size: 13px;
-    color: var(--text-gray);
+    color: #666;
     margin-top: 10px;
     display: flex;
     align-items: center;
@@ -251,7 +251,7 @@
 }
 
 .preview-email i {
-    color: var(--primary);
+    color: #0B4F2E;
 }
 
 /* ===== FORM ACTIONS ===== */
@@ -260,12 +260,12 @@
     gap: 15px;
     margin-top: 30px;
     padding-top: 20px;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid #e0e0e0;
 }
 
 .btn-submit {
     flex: 1;
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    background: linear-gradient(135deg, #0B4F2E, #1a7a42);
     color: white;
     padding: 14px 25px;
     border: none;
@@ -282,15 +282,15 @@
 
 .btn-submit:hover {
     transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 10px 25px rgba(11, 79, 46, 0.3);
 }
 
 .btn-cancel {
     flex: 1;
-    background: var(--bg-white);
-    color: var(--text-gray);
+    background: white;
+    color: #666;
     padding: 14px 25px;
-    border: 2px solid var(--border);
+    border: 2px solid #e0e0e0;
     border-radius: 14px;
     font-size: 16px;
     font-weight: 600;
@@ -305,26 +305,24 @@
 }
 
 .btn-cancel:hover {
-    border-color: var(--danger);
-    color: var(--danger);
-    background: rgba(239, 68, 68, 0.05);
+    border-color: #dc3545;
+    color: #dc3545;
+    background: rgba(220, 53, 69, 0.05);
 }
 
-/* Back Button */
+/* ===== BACK BUTTON ===== */
 .back-btn {
-    background: var(--bg-white);
+    background: white;
     padding: 10px 20px;
     border-radius: 12px;
     text-decoration: none;
-    color: var(--text-dark);
+    color: #333;
     display: inline-flex;
     align-items: center;
     gap: 8px;
     font-weight: 500;
-    border: 1px solid var(--border);
+    border: 1px solid #e0e0e0;
     transition: all 0.3s ease;
-    margin-bottom: 10px;
-    margin-top: 10px;
 }
 
 .back-btn i {
@@ -333,14 +331,56 @@
 }
 
 .back-btn:hover {
-    border-color: var(--primary);
-    color: var(--primary);
+    border-color: #0B4F2E;
+    color: #0B4F2E;
     transform: translateY(-2px);
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .back-btn:hover i {
     transform: translateX(-3px);
+}
+
+/* ===== ALERT MESSAGES ===== */
+.alert {
+    padding: 15px 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.alert-success {
+    background: #d4edda;
+    color: #155724;
+    border-left: 4px solid #28a745;
+}
+
+.alert-error {
+    background: #fee2e2;
+    color: #dc2626;
+    border-left: 4px solid #dc2626;
+}
+
+/* ===== PAGE HEADER ===== */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.page-header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.page-header p {
+    color: #666;
+    font-size: 14px;
 }
 
 /* ===== RESPONSIVE ===== */
@@ -369,5 +409,30 @@
     
     .form-actions {
         flex-direction: column;
+    }
+    
+    .page-header {
+        flex-direction: column;
+        gap: 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    .form-card {
+        padding: 20px;
+    }
+    
+    .form-card h3 {
+        font-size: 18px;
+    }
+    
+    .preview-avatar {
+        width: 50px;
+        height: 50px;
+        font-size: 24px;
+    }
+    
+    .preview-info h5 {
+        font-size: 16px;
     }
 }

@@ -47,7 +47,18 @@ $subjects_query = $conn->prepare("
 $subjects_query->execute();
 $subjects = $subjects_query->fetchAll(PDO::FETCH_ASSOC);
 
-// FIRST: Get today's attendance record (should be only one)
+// Get current time in Philippine Time
+$ph_time_now = new DateTime('now', new DateTimeZone('Asia/Manila'));
+$current_hour = (int)$ph_time_now->format('H');
+$current_minute = (int)$ph_time_now->format('i');
+$current_time_display = $ph_time_now->format('h:i A');
+
+// Define cutoff time for being on time (8:00 AM)
+$cutoff_hour = 8;
+$cutoff_minute = 0;
+$is_late = ($current_hour > $cutoff_hour) || ($current_hour == $cutoff_hour && $current_minute > $cutoff_minute);
+
+// FIRST: Get today's attendance record
 $today_stmt = $conn->prepare("
     SELECT * FROM teacher_attendance 
     WHERE teacher_id = ? AND date = CURDATE()
@@ -70,7 +81,6 @@ if($today_attendance) {
 // Check for existing active session (only if attendance not completed)
 $active_session = null;
 if(!$attendance_completed && $today_attendance) {
-    // Check if there's an active session for today's record
     $active_stmt = $conn->prepare("
         SELECT * FROM teacher_attendance 
         WHERE id = ? AND session_status = 'active' AND expires_at > NOW()
@@ -79,58 +89,39 @@ if(!$attendance_completed && $today_attendance) {
     $active_session = $active_stmt->fetch(PDO::FETCH_ASSOC);
 }
 
-// Handle QR generation
+// Handle QR generation - Different for Time In and Time Out
 if(isset($_GET['generate']) && $_GET['generate'] == '1') {
+    $type = isset($_GET['type']) ? $_GET['type'] : 'time_in';
+    
     // Check if attendance is already completed for today
     if($attendance_completed) {
-        $error_message = "You have already completed your attendance for today (both Time In and Time Out recorded). You cannot generate a new QR code.";
-    } else {
-        // Check if there's an existing attendance record for today
-        if(!$today_attendance) {
-            // Create new attendance record
-            $token = md5($teacher_id . date('Y-m-d H:i:s') . uniqid() . rand(1000, 9999));
-            $current_time = new DateTime('now', new DateTimeZone('Asia/Manila'));
-            $expires_time = clone $current_time;
-            $expires_time->modify('+1 hour');
-            
-            $insert_stmt = $conn->prepare("
-                INSERT INTO teacher_attendance (teacher_id, date, qr_token, session_status, expires_at, status)
-                VALUES (?, CURDATE(), ?, 'active', ?, 'Pending')
-            ");
-            
-            if($insert_stmt->execute([$teacher_id, $token, $expires_time->format('Y-m-d H:i:s')])) {
-                $success_message = "QR Code generated successfully! Scan to record your attendance.";
-                // Refresh data
-                $today_stmt->execute([$teacher_id]);
-                $today_attendance = $today_stmt->fetch(PDO::FETCH_ASSOC);
-                $active_session = $today_attendance;
-            } else {
-                $error_message = "Failed to generate QR code. Please try again.";
-            }
+        $error_message = "You have already completed your attendance for today (both Time In and Time Out recorded).";
+    } 
+    // For Time In QR generation
+    elseif($type == 'time_in') {
+        // Check if Time In already recorded
+        if($time_in_recorded) {
+            $error_message = "Time In already recorded for today. You cannot generate a new Time In QR code.";
         } else {
-            // Update existing record with new QR code (only if time out not recorded)
-            if(!$time_out_recorded) {
-                // First, expire any existing active session
-                $expire_stmt = $conn->prepare("
-                    UPDATE teacher_attendance 
-                    SET session_status = 'expired'
-                    WHERE id = ? AND session_status = 'active'
-                ");
-                $expire_stmt->execute([$today_attendance['id']]);
-                
-                // Generate new token
+            // Create new attendance record or update existing
+            if(!$today_attendance) {
+                // Create new attendance record
                 $token = md5($teacher_id . date('Y-m-d H:i:s') . uniqid() . rand(1000, 9999));
                 $current_time = new DateTime('now', new DateTimeZone('Asia/Manila'));
                 $expires_time = clone $current_time;
-                $expires_time->modify('+1 hour');
+                $expires_time->modify('+30 minutes');
                 
-                $update_stmt = $conn->prepare("
-                    UPDATE teacher_attendance 
-                    SET qr_token = ?, session_status = 'active', expires_at = ?
-                    WHERE id = ?
+                $insert_stmt = $conn->prepare("
+                    INSERT INTO teacher_attendance (teacher_id, date, qr_token, session_status, expires_at, session_type, status)
+                    VALUES (?, CURDATE(), ?, 'active', ?, 'time_in', 'Pending')
                 ");
-                if($update_stmt->execute([$token, $expires_time->format('Y-m-d H:i:s'), $today_attendance['id']])) {
-                    $success_message = "New QR Code generated successfully!";
+                
+                if($insert_stmt->execute([$teacher_id, $token, $expires_time->format('Y-m-d H:i:s')])) {
+                    $success_message = "Time In QR Code generated successfully! Scan to record your Time In.";
+                    // Refresh data
+                    $today_stmt->execute([$teacher_id]);
+                    $today_attendance = $today_stmt->fetch(PDO::FETCH_ASSOC);
+                    
                     // Refresh active session
                     $active_stmt = $conn->prepare("
                         SELECT * FROM teacher_attendance 
@@ -142,7 +133,88 @@ if(isset($_GET['generate']) && $_GET['generate'] == '1') {
                     $error_message = "Failed to generate QR code. Please try again.";
                 }
             } else {
-                $error_message = "Cannot generate QR code. Time Out already recorded.";
+                // Update existing record with new QR code (if Time Out not recorded)
+                if(!$time_out_recorded) {
+                    // First, expire any existing active session
+                    $expire_stmt = $conn->prepare("
+                        UPDATE teacher_attendance 
+                        SET session_status = 'expired'
+                        WHERE id = ? AND session_status = 'active'
+                    ");
+                    $expire_stmt->execute([$today_attendance['id']]);
+                    
+                    // Generate new token
+                    $token = md5($teacher_id . date('Y-m-d H:i:s') . uniqid() . rand(1000, 9999));
+                    $current_time = new DateTime('now', new DateTimeZone('Asia/Manila'));
+                    $expires_time = clone $current_time;
+                    $expires_time->modify('+30 minutes');
+                    
+                    $update_stmt = $conn->prepare("
+                        UPDATE teacher_attendance 
+                        SET qr_token = ?, session_status = 'active', expires_at = ?, session_type = 'time_in'
+                        WHERE id = ?
+                    ");
+                    if($update_stmt->execute([$token, $expires_time->format('Y-m-d H:i:s'), $today_attendance['id']])) {
+                        $success_message = "Time In QR Code generated successfully!";
+                        // Refresh active session
+                        $active_stmt = $conn->prepare("
+                            SELECT * FROM teacher_attendance 
+                            WHERE id = ? AND session_status = 'active' AND expires_at > NOW()
+                        ");
+                        $active_stmt->execute([$today_attendance['id']]);
+                        $active_session = $active_stmt->fetch(PDO::FETCH_ASSOC);
+                    } else {
+                        $error_message = "Failed to generate QR code. Please try again.";
+                    }
+                } else {
+                    $error_message = "Cannot generate Time In QR code. Time Out already recorded.";
+                }
+            }
+        }
+    }
+    // For Time Out QR generation
+    elseif($type == 'time_out') {
+        // Check if Time In has been recorded
+        if(!$time_in_recorded) {
+            $error_message = "You must record Time In first before generating Time Out QR code.";
+        } elseif($time_out_recorded) {
+            $error_message = "Time Out already recorded for today.";
+        } else {
+            // Generate Time Out QR code
+            if(!$today_attendance) {
+                $error_message = "No attendance record found. Please record Time In first.";
+            } else {
+                // First, expire any existing active session
+                $expire_stmt = $conn->prepare("
+                    UPDATE teacher_attendance 
+                    SET session_status = 'expired'
+                    WHERE id = ? AND session_status = 'active'
+                ");
+                $expire_stmt->execute([$today_attendance['id']]);
+                
+                // Generate new token for Time Out
+                $token = md5($teacher_id . date('Y-m-d H:i:s') . uniqid() . rand(1000, 9999) . 'timeout');
+                $current_time = new DateTime('now', new DateTimeZone('Asia/Manila'));
+                $expires_time = clone $current_time;
+                $expires_time->modify('+30 minutes');
+                
+                $update_stmt = $conn->prepare("
+                    UPDATE teacher_attendance 
+                    SET qr_token = ?, session_status = 'active', expires_at = ?, session_type = 'time_out'
+                    WHERE id = ?
+                ");
+                if($update_stmt->execute([$token, $expires_time->format('Y-m-d H:i:s'), $today_attendance['id']])) {
+                    $success_message = "Time Out QR Code generated successfully! Scan to record your Time Out.";
+                    // Refresh active session
+                    $active_stmt = $conn->prepare("
+                        SELECT * FROM teacher_attendance 
+                        WHERE id = ? AND session_status = 'active' AND expires_at > NOW()
+                    ");
+                    $active_stmt->execute([$today_attendance['id']]);
+                    $active_session = $active_stmt->fetch(PDO::FETCH_ASSOC);
+                } else {
+                    $error_message = "Failed to generate Time Out QR code. Please try again.";
+                }
             }
         }
     }
@@ -183,7 +255,7 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
 
 // Calculate the QR URL if active session exists
 $qr_url = '';
-if($active_session && $active_session['qr_token'] && !$attendance_completed && !$time_out_recorded) {
+if($active_session && $active_session['qr_token'] && !$attendance_completed) {
     $base_url = (isset($_SERVER['HTTPS']) ? "https://" : "http://") . $_SERVER['HTTP_HOST'];
     $base_url = str_replace('/teacher', '', $base_url);
     $qr_url = $base_url . "/EnrollmentSystem/teacher/process_attendance.php?token=" . $active_session['qr_token'];
@@ -209,6 +281,79 @@ $ph_date_display = $ph_time->format('F d, Y');
     <link rel="stylesheet" href="css/base.css">
     <!-- QR Attendance CSS -->
     <link rel="stylesheet" href="css/attendance_qr.css">
+    <style>
+        .qr-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        .btn-generate-timein {
+            background: linear-gradient(135deg, #0B4F2E, #1a7a42);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .btn-generate-timeout {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .btn-generate-timein:hover, .btn-generate-timeout:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .info-text-late {
+            color: #dc3545;
+            background: #fee2e2;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        .info-text-ontime {
+            color: #10b981;
+            background: #d4edda;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        .cutoff-info {
+            background: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .cutoff-info i {
+            margin-right: 8px;
+        }
+        .text-warning {
+            color: #f59e0b;
+        }
+        .status-badge.status-Late {
+            background: #fee2e2;
+            color: #dc3545;
+        }
+        .status-badge.status-Present {
+            background: #d4edda;
+            color: #10b981;
+        }
+    </style>
 </head>
 <body>
     <div class="app-container">
@@ -265,7 +410,7 @@ $ph_date_display = $ph_time->format('F d, Y');
             <div class="page-header">
                 <div>
                     <h1>QR Code Attendance System</h1>
-                    <p>Generate QR code or scan to record your time in and time out</p>
+                    <p>Generate QR code to record your Time In and Time Out</p>
                 </div>
                 <div class="date-badge">
                     <i class="fas fa-calendar-alt"></i> <?php echo date('l, F d, Y'); ?>
@@ -275,6 +420,17 @@ $ph_date_display = $ph_time->format('F d, Y');
             <!-- Philippine Time Display -->
             <div class="ph-time">
                 <i class="fas fa-clock"></i> Philippine Time: <?php echo $ph_date_display . ' - ' . $ph_time_display; ?>
+            </div>
+
+            <!-- Cutoff Time Info -->
+            <div class="cutoff-info">
+                <i class="fas fa-info-circle"></i> 
+                <strong>Time In Cutoff: 8:00 AM</strong> - Time in after 8:00 AM will be marked as "Late"
+                <?php if(!$time_in_recorded && $is_late): ?>
+                    <span class="info-text-late" style="display: inline-block; margin-left: 10px;">
+                        <i class="fas fa-exclamation-triangle"></i> Current time is past 8:00 AM, Time In will be marked as LATE
+                    </span>
+                <?php endif; ?>
             </div>
 
             <?php if($success_message): ?>
@@ -324,7 +480,16 @@ $ph_date_display = $ph_time->format('F d, Y');
                     <span class="info-value">
                         <?php 
                         if($time_in_recorded) {
-                            echo date('h:i A', strtotime($today_attendance['time_in']));
+                            $time_in_val = date('h:i A', strtotime($today_attendance['time_in']));
+                            $time_in_obj = new DateTime($today_attendance['time_in']);
+                            $time_in_hour = (int)$time_in_obj->format('H');
+                            $is_time_in_late = ($time_in_hour > 8 || ($time_in_hour == 8 && (int)$time_in_obj->format('i') > 0));
+                            echo $time_in_val;
+                            if($is_time_in_late) {
+                                echo ' <span class="status-badge status-Late" style="font-size: 11px; margin-left: 8px;">Late</span>';
+                            } else {
+                                echo ' <span class="status-badge status-Present" style="font-size: 11px; margin-left: 8px;">On Time</span>';
+                            }
                         } else {
                             echo '<span class="text-warning">Not yet recorded</span>';
                         }
@@ -338,7 +503,7 @@ $ph_date_display = $ph_time->format('F d, Y');
                         if($time_out_recorded) {
                             echo date('h:i A', strtotime($today_attendance['time_out']));
                         } elseif($time_in_recorded && !$time_out_recorded) {
-                            echo '<span class="text-warning">Waiting for Time Out scan...</span>';
+                            echo '<span class="text-warning">Waiting for Time Out...</span>';
                         } else {
                             echo '<span class="text-warning">Not yet recorded</span>';
                         }
@@ -353,18 +518,6 @@ $ph_date_display = $ph_time->format('F d, Y');
                         </span>
                     </span>
                 </div>
-                <?php if($time_in_recorded && !$time_out_recorded): ?>
-                <div class="info-row info-highlight">
-                    <span class="info-label">📌 Next Step:</span>
-                    <span class="info-value">Scan the same QR code again to record Time Out</span>
-                </div>
-                <?php endif; ?>
-                <?php if($attendance_completed): ?>
-                <div class="info-row info-success">
-                    <span class="info-label">✅ Complete:</span>
-                    <span class="info-value">You have completed your attendance for today!</span>
-                </div>
-                <?php endif; ?>
             </div>
             <?php endif; ?>
 
@@ -418,6 +571,7 @@ $ph_date_display = $ph_time->format('F d, Y');
             <!-- QR Code Section -->
             <div class="qr-card">
                 <?php if($attendance_completed): ?>
+                    <!-- Case 1: Both Time In and Time Out completed -->
                     <div class="qr-container">
                         <i class="fas fa-check-circle success-icon"></i>
                         <h3>Attendance Completed for Today</h3>
@@ -426,57 +580,89 @@ $ph_date_display = $ph_time->format('F d, Y');
                         <p><strong>Time Out:</strong> <?php echo date('h:i A', strtotime($today_attendance['time_out'])); ?></p>
                         <p class="info-text">You can generate a new QR code tomorrow for the next attendance day.</p>
                     </div>
-                <?php elseif($active_session && $active_session['qr_token'] && $qr_url && !$time_out_recorded): ?>
+                    
+                <?php elseif($time_in_recorded && !$time_out_recorded): ?>
+                    <!-- Case 2: Time In recorded, Time Out NOT recorded - Show Time Out QR section -->
                     <div class="qr-container">
-                        <h3><i class="fas fa-qrcode"></i> Your Active QR Code</h3>
-                        <div class="qr-code">
-                            <img src="../includes/generate_qr.php?data=<?php echo urlencode($qr_url); ?>" alt="QR Code">
-                        </div>
-                        <div class="qr-info">
-                            <h4>Scan this QR Code to Record Attendance</h4>
-                            <p>📱 Scan this QR code using your phone or the camera above</p>
-                            <p class="expiry-text">
-                                <i class="fas fa-clock"></i> Expires: <?php echo date('h:i A', strtotime($active_session['expires_at'])); ?>
-                            </p>
-                            <p class="info-text">
-                                <i class="fas fa-info-circle"></i> 
-                                <?php if(!$time_in_recorded): ?>
-                                    First scan = Record Time In
-                                <?php elseif($time_in_recorded && !$time_out_recorded): ?>
-                                    Second scan = Record Time Out
-                                <?php endif; ?>
-                            </p>
-                            <div class="qr-actions">
-                                <a href="?generate=1" class="btn-generate regenerate" onclick="return confirm('Generate a new QR code? The current one will expire.');">
-                                    <i class="fas fa-sync-alt"></i> Generate New QR Code
-                                </a>
+                        <h3><i class="fas fa-qrcode"></i> Time Out QR Code</h3>
+                        <p>Your Time In has been recorded. Generate a QR code for Time Out.</p>
+                        
+                        <?php if($active_session && $active_session['qr_token'] && $qr_url && isset($active_session['session_type']) && $active_session['session_type'] == 'time_out'): ?>
+                            <!-- Active Time Out QR code exists -->
+                            <div class="qr-code">
+                                <img src="../includes/generate_qr.php?data=<?php echo urlencode($qr_url); ?>" alt="Time Out QR Code">
                             </div>
-                        </div>
+                            <div class="qr-info">
+                                <h4>Scan this QR Code to Record Time Out</h4>
+                                <p>📱 Scan this QR code using your phone or the camera above</p>
+                                <p class="expiry-text">
+                                    <i class="fas fa-clock"></i> Expires: <?php echo date('h:i A', strtotime($active_session['expires_at'])); ?>
+                                </p>
+                                <div class="qr-actions">
+                                    <a href="?generate=1&type=time_out" class="btn-generate-timeout" onclick="return confirm('Generate a new Time Out QR code? The current one will expire.');">
+                                        <i class="fas fa-sync-alt"></i> Generate New Time Out QR Code
+                                    </a>
+                                </div>
+                            </div>
+                        <?php else: ?>
+                            <!-- No active Time Out QR code - Show generate button -->
+                            <div class="qr-actions" style="text-align: center; padding: 30px;">
+                                <a href="?generate=1&type=time_out" class="btn-generate-timeout">
+                                    <i class="fas fa-qrcode"></i> Generate Time Out QR Code
+                                </a>
+                                <p class="info-text" style="margin-top: 15px;">
+                                    <i class="fas fa-info-circle"></i> Generate a QR code to record your Time Out. This will expire in 30 minutes.
+                                </p>
+                            </div>
+                        <?php endif; ?>
                     </div>
-                <?php elseif($time_in_recorded && !$time_out_recorded && !$active_session): ?>
+                    
+                <?php elseif(!$time_in_recorded): ?>
+                    <!-- Case 3: No Time In recorded yet - Show Time In QR section -->
                     <div class="qr-container">
-                        <i class="fas fa-clock warning-icon"></i>
-                        <h3>QR Code Expired or Not Generated</h3>
-                        <p>You have recorded Time In but need to scan again for Time Out.</p>
-                        <p>Please generate a new QR code to record your Time Out.</p>
-                        <div class="qr-actions">
-                            <a href="?generate=1" class="btn-generate">
-                                <i class="fas fa-qrcode"></i> Generate QR Code for Time Out
-                            </a>
-                        </div>
-                    </div>
-                <?php else: ?>
-                    <div class="qr-container">
-                        <h3><i class="fas fa-qrcode"></i> Generate QR Code</h3>
-                        <p>Click the button below to generate a QR code for today's attendance.</p>
-                        <p class="info-text">
-                            <i class="fas fa-info-circle"></i> The QR code will expire in 1 hour
-                        </p>
-                        <div class="qr-actions">
-                            <a href="?generate=1" class="btn-generate">
-                                <i class="fas fa-qrcode"></i> Generate QR Code
-                            </a>
-                        </div>
+                        <h3><i class="fas fa-qrcode"></i> Time In QR Code</h3>
+                        <p>Generate a QR code to record your Time In</p>
+                        
+                        <?php if($active_session && $active_session['qr_token'] && $qr_url && (!isset($active_session['session_type']) || $active_session['session_type'] != 'time_out')): ?>
+                            <!-- Active Time In QR code exists -->
+                            <div class="qr-code">
+                                <img src="../includes/generate_qr.php?data=<?php echo urlencode($qr_url); ?>" alt="Time In QR Code">
+                            </div>
+                            <div class="qr-info">
+                                <h4>Scan this QR Code to Record Time In</h4>
+                                <p>📱 Scan this QR code using your phone or the camera above</p>
+                                <p class="expiry-text">
+                                    <i class="fas fa-clock"></i> Expires: <?php echo date('h:i A', strtotime($active_session['expires_at'])); ?>
+                                </p>
+                                <?php if($is_late): ?>
+                                    <div class="info-text-late">
+                                        <i class="fas fa-exclamation-triangle"></i> Note: Time In after 8:00 AM will be marked as LATE
+                                    </div>
+                                <?php else: ?>
+                                    <div class="info-text-ontime">
+                                        <i class="fas fa-check-circle"></i> Time In before 8:00 AM will be marked as ON TIME
+                                    </div>
+                                <?php endif; ?>
+                                <div class="qr-actions">
+                                    <a href="?generate=1&type=time_in" class="btn-generate-timein" onclick="return confirm('Generate a new Time In QR code? The current one will expire.');">
+                                        <i class="fas fa-sync-alt"></i> Generate New Time In QR Code
+                                    </a>
+                                </div>
+                            </div>
+                        <?php else: ?>
+                            <!-- No active Time In QR code - Show generate button -->
+                            <div class="qr-actions" style="text-align: center; padding: 30px;">
+                                <a href="?generate=1&type=time_in" class="btn-generate-timein">
+                                    <i class="fas fa-qrcode"></i> Generate Time In QR Code
+                                </a>
+                                <p class="info-text" style="margin-top: 15px;">
+                                    <i class="fas fa-info-circle"></i> Generate a QR code to record your Time In. This will expire in 30 minutes.
+                                    <?php if($is_late): ?>
+                                        <br><strong class="text-warning">⚠️ Note: Time In after 8:00 AM will be marked as LATE</strong>
+                                    <?php endif; ?>
+                                </p>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 <?php endif; ?>
             </div>
@@ -540,7 +726,7 @@ $ph_date_display = $ph_time->format('F d, Y');
         </div>
     </div>
     
-     <!-- jsQR Library for QR code scanning -->
+    <!-- jsQR Library for QR code scanning -->
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <!-- QR Attendance JS -->
     <script src="js/attendance_qr.js"></script>
@@ -553,7 +739,10 @@ $ph_date_display = $ph_time->format('F d, Y');
             totalDays: <?php echo $stats['total_days'] ?? 0; ?>,
             presentDays: <?php echo $stats['present_days'] ?? 0; ?>,
             lateDays: <?php echo $stats['late_days'] ?? 0; ?>,
-            absentDays: <?php echo $stats['absent_days'] ?? 0; ?>
+            absentDays: <?php echo $stats['absent_days'] ?? 0; ?>,
+            isLate: <?php echo $is_late ? 'true' : 'false'; ?>,
+            timeInRecorded: <?php echo $time_in_recorded ? 'true' : 'false'; ?>,
+            timeOutRecorded: <?php echo $time_out_recorded ? 'true' : 'false'; ?>
         };
         
         // Auto-hide alerts after 5 seconds
@@ -562,7 +751,7 @@ $ph_date_display = $ph_time->format('F d, Y');
             alerts.forEach(alert => {
                 alert.style.opacity = '0';
                 setTimeout(() => {
-                    alert.style.display = 'none';
+                    if (alert.parentNode) alert.remove();
                 }, 300);
             });
         }, 5000);

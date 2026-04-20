@@ -63,14 +63,14 @@ if(isset($_POST['add_schedule'])) {
     $school_year = $_POST['school_year'];
     $quarter = $_POST['quarter'];
 
-    // Check if subject already assigned to this section for this quarter
+    // Check if subject already assigned to this section on the SAME DAY
     $subject_check = $conn->prepare("
         SELECT COUNT(*) FROM class_schedules 
-        WHERE section_id = ? AND subject_id = ? AND school_year = ? AND quarter = ?
+        WHERE section_id = ? AND subject_id = ? AND day_id = ? AND school_year = ? AND quarter = ?
     ");
-    $subject_check->execute([$section_id, $subject_id, $school_year, $quarter]);
+    $subject_check->execute([$section_id, $subject_id, $day_id, $school_year, $quarter]);
     if($subject_check->fetchColumn() > 0) {
-        $error_message = "This subject is already assigned to this section for the selected quarter!";
+        $error_message = "This subject is already assigned to this section on the same day!";
     }
     // Check for teacher conflict
     else {
@@ -124,7 +124,6 @@ if(isset($_POST['add_schedule'])) {
                 
                 if($insert->rowCount() > 0) {
                     $success_message = "Schedule added successfully!";
-                    // Refresh the page to show updated schedules
                     header("Location: create_schedule.php?section_id=$section_id");
                     exit();
                 } else {
@@ -135,21 +134,17 @@ if(isset($_POST['add_schedule'])) {
     }
 }
 
-// Get subjects for this grade level (excluding already assigned for current quarter)
+// Get all subjects for this grade level
 $subjects_stmt = $conn->prepare("
     SELECT id, subject_name 
     FROM subjects 
     WHERE grade_id = ? 
-    AND id NOT IN (
-        SELECT subject_id FROM class_schedules 
-        WHERE section_id = ? AND school_year = ? AND quarter = ?
-    )
     ORDER BY subject_name
 ");
-$subjects_stmt->execute([$section['grade_id'], $section_id, $current_school_year, 1]);
-$subjects = $subjects_stmt->fetchAll(PDO::FETCH_ASSOC);
+$subjects_stmt->execute([$section['grade_id']]);
+$all_subjects = $subjects_stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Get teachers (excluding those with conflicts)
+// Get teachers
 $teachers_stmt = $conn->prepare("
     SELECT id, fullname 
     FROM users 
@@ -167,7 +162,7 @@ $days = $days_stmt->fetchAll(PDO::FETCH_ASSOC);
 $time_slots_stmt = $conn->query("SELECT * FROM time_slots ORDER BY start_time");
 $time_slots = $time_slots_stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Get existing schedules to use for validation
+// Get existing schedules for validation
 $existing_schedules_stmt = $conn->prepare("
     SELECT cs.*, d.day_name, ts.start_time, ts.end_time
     FROM class_schedules cs
@@ -181,7 +176,7 @@ $existing_schedules = $existing_schedules_stmt->fetchAll(PDO::FETCH_ASSOC);
 // Create arrays for taken combinations
 $taken_teachers_by_day_time = [];
 $taken_rooms_by_day_time = [];
-$taken_subjects = [];
+$taken_subjects_by_day = [];
 
 foreach($existing_schedules as $sch) {
     $key = $sch['day_id'] . '_' . $sch['time_slot_id'];
@@ -189,10 +184,13 @@ foreach($existing_schedules as $sch) {
     if(!empty($sch['room'])) {
         $taken_rooms_by_day_time[$key][] = $sch['room'];
     }
-    $taken_subjects[] = $sch['subject_id'];
+    if(!isset($taken_subjects_by_day[$sch['day_id']])) {
+        $taken_subjects_by_day[$sch['day_id']] = [];
+    }
+    $taken_subjects_by_day[$sch['day_id']][] = $sch['subject_id'];
 }
 
-// Get current schedules for this section with all details
+// Get current schedules for display
 $schedules_stmt = $conn->prepare("
     SELECT cs.*, sub.subject_name, u.fullname as teacher_name,
            d.day_name, d.day_order, ts.start_time, ts.end_time, ts.slot_name
@@ -220,51 +218,20 @@ foreach($schedules as $sch) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Schedule - <?php echo htmlspecialchars($section['section_name']); ?> | PLSNHS</title>
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <!-- Base CSS -->
     <link rel="stylesheet" href="css/base.css">
-    <!-- Create Schedule CSS -->
     <link rel="stylesheet" href="css/create_schedule.css">
-    <style>
-        .disabled-option {
-            color: #94a3b8;
-            background-color: #f1f5f9;
-        }
-        .conflict-badge {
-            display: inline-block;
-            background: #fee2e2;
-            color: #ef4444;
-            font-size: 10px;
-            padding: 2px 6px;
-            border-radius: 10px;
-            margin-left: 8px;
-        }
-        .available-badge {
-            display: inline-block;
-            background: #dcfce7;
-            color: #10b981;
-            font-size: 10px;
-            padding: 2px 6px;
-            border-radius: 10px;
-            margin-left: 8px;
-        }
-        .dynamic-warning {
-            background: #fffbeb;
-            border-left: 4px solid #f59e0b;
-            padding: 12px 15px;
-            border-radius: 8px;
-            margin-top: 15px;
-            font-size: 13px;
-        }
-    </style>
 </head>
 <body>
+    <!-- Mobile Menu Toggle -->
+    <div class="menu-toggle" id="menuToggle">
+        <i class="fas fa-bars"></i>
+    </div>
+
     <div class="app-container">
         <!-- Sidebar -->
-        <aside class="sidebar">
+        <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <div class="logo">
                     <div class="logo-icon">
@@ -344,46 +311,31 @@ foreach($schedules as $sch) {
                 </div>
             </div>
 
-            <!-- Alert Messages -->
             <?php if($success_message): ?>
-                <div class="alert alert-success">
-                    <i class="fas fa-check-circle"></i>
-                    <?php echo $success_message; ?>
-                </div>
+                <div class="alert alert-success"><i class="fas fa-check-circle"></i> <?php echo $success_message; ?></div>
             <?php endif; ?>
-
             <?php if($error_message): ?>
-                <div class="alert alert-error">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <?php echo $error_message; ?>
-                </div>
+                <div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> <?php echo $error_message; ?></div>
             <?php endif; ?>
 
-            <!-- Main Grid -->
             <div class="grid-2">
                 <!-- Add Schedule Form -->
                 <div class="card">
                     <div class="card-header">
                         <h3><i class="fas fa-plus-circle"></i> Add New Schedule</h3>
+                        <span class="badge-count"><i class="fas fa-info-circle"></i> Same subject allowed on different days</span>
                     </div>
                     <form method="POST" id="scheduleForm">
                         <div class="form-group">
                             <label>Subject <span>*</span></label>
                             <select name="subject_id" id="subject_id" required>
                                 <option value="">Select Subject</option>
-                                <?php if(count($subjects) > 0): ?>
-                                    <?php foreach($subjects as $subject): ?>
-                                        <option value="<?php echo $subject['id']; ?>">
-                                            <?php echo htmlspecialchars($subject['subject_name']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                <?php else: ?>
-                                    <option value="">No subjects available for this grade level</option>
-                                <?php endif; ?>
+                                <?php foreach($all_subjects as $subject): ?>
+                                    <option value="<?php echo $subject['id']; ?>">
+                                        <?php echo htmlspecialchars($subject['subject_name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
                             </select>
-                            <?php if(count($subjects) == 0): ?>
-                                <small style="color: #ef4444;">All subjects have been assigned. Please remove some schedules to add more.</small>
-                            <?php endif; ?>
                         </div>
 
                         <div class="form-group">
@@ -415,7 +367,6 @@ foreach($schedules as $sch) {
                                 <?php foreach($time_slots as $slot): ?>
                                     <option value="<?php echo $slot['id']; ?>">
                                         <?php echo date('h:i A', strtotime($slot['start_time'])) . ' - ' . date('h:i A', strtotime($slot['end_time'])); ?>
-                                        <?php if($slot['slot_name']): ?>(<?php echo $slot['slot_name']; ?>)<?php endif; ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
@@ -423,15 +374,13 @@ foreach($schedules as $sch) {
 
                         <div class="form-group">
                             <label>Room</label>
-                            <input type="text" name="room" id="room" placeholder="e.g., Room 101, Science Lab">
+                            <input type="text" name="room" id="room" placeholder="e.g., Room 101">
                         </div>
 
                         <div class="form-group">
                             <label>School Year <span>*</span></label>
                             <select name="school_year" required>
-                                <option value="<?php echo $current_school_year; ?>" selected><?php echo $current_school_year; ?> (Current)</option>
-                                <option value="2025-2026">2025-2026</option>
-                                <option value="2027-2028">2027-2028</option>
+                                <option value="<?php echo $current_school_year; ?>" selected><?php echo $current_school_year; ?></option>
                             </select>
                         </div>
 
@@ -445,12 +394,12 @@ foreach($schedules as $sch) {
                             </select>
                         </div>
 
-                        <button type="submit" name="add_schedule" class="btn btn-primary" style="width: 100%;">
+                        <button type="submit" name="add_schedule" class="btn-primary">
                             <i class="fas fa-save"></i> Add to Schedule
                         </button>
                     </form>
 
-                    <div id="conflictWarning" class="dynamic-warning" style="display: none;">
+                    <div id="conflictWarning" class="dynamic-warning">
                         <i class="fas fa-exclamation-triangle"></i>
                         <span id="conflictMessage"></span>
                     </div>
@@ -458,46 +407,206 @@ foreach($schedules as $sch) {
                     <div class="conflict-warning">
                         <i class="fas fa-info-circle"></i>
                         <div>
-                            <strong>Schedule Conflict Prevention:</strong>
-                            <p style="margin-top: 5px;">The system automatically checks for teacher and room conflicts to prevent double-booking.</p>
+                            <strong>Schedule Rules:</strong>
+                            <p>✅ Same subject can be scheduled on different days (e.g., Math on Monday and Wednesday)<br>
+                            ❌ Teacher cannot have two classes at the same day and time<br>
+                            ❌ Room cannot be double-booked at the same day and time</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Current Schedule List -->
+                <!-- Current Schedule List - Grouped by Day -->
                 <div class="card">
                     <div class="card-header">
                         <h3><i class="fas fa-list"></i> Current Schedule</h3>
                         <span class="badge-count"><?php echo count($schedules); ?> subjects</span>
                     </div>
                     
-                    <div class="schedule-list">
-                        <?php if(count($schedules) > 0): ?>
-                            <?php foreach($schedules as $sch): ?>
-                                <div class="schedule-item">
-                                    <div class="schedule-info">
-                                        <h4><?php echo htmlspecialchars($sch['subject_name']); ?></h4>
-                                        <p>
-                                            <span><i class="fas fa-user"></i> <?php echo htmlspecialchars($sch['teacher_name']); ?></span>
-                                            <span><i class="fas fa-calendar"></i> <?php echo $sch['day_name']; ?></span>
-                                            <span><i class="fas fa-clock"></i> <?php echo date('h:i A', strtotime($sch['start_time'])); ?></span>
-                                            <?php if($sch['room']): ?>
-                                                <span><i class="fas fa-door-open"></i> <?php echo htmlspecialchars($sch['room']); ?></span>
-                                            <?php endif; ?>
-                                        </p>
+                    <!-- Day Tabs -->
+                    <div class="day-tabs">
+                        <button class="day-tab active" data-day="monday">Monday</button>
+                        <button class="day-tab" data-day="tuesday">Tuesday</button>
+                        <button class="day-tab" data-day="wednesday">Wednesday</button>
+                        <button class="day-tab" data-day="thursday">Thursday</button>
+                        <button class="day-tab" data-day="friday">Friday</button>
+                    </div>
+                    
+                    <!-- Monday Schedule -->
+                    <div class="day-schedule active" id="monday-schedule">
+                        <?php
+                        $monday_schedules = array_filter($schedules, function($sch) {
+                            return $sch['day_name'] == 'Monday';
+                        });
+                        ?>
+                        <?php if(count($monday_schedules) > 0): ?>
+                            <div class="schedule-list">
+                                <?php foreach($monday_schedules as $sch): ?>
+                                    <div class="schedule-item monday">
+                                        <div class="schedule-info">
+                                            <h4><?php echo htmlspecialchars($sch['subject_name']); ?></h4>
+                                            <p>
+                                                <span><i class="fas fa-user"></i> <?php echo htmlspecialchars($sch['teacher_name']); ?></span>
+                                                <span><i class="fas fa-clock"></i> <?php echo date('h:i A', strtotime($sch['start_time'])); ?></span>
+                                                <?php if($sch['room']): ?>
+                                                    <span><i class="fas fa-door-open"></i> <?php echo htmlspecialchars($sch['room']); ?></span>
+                                                <?php endif; ?>
+                                            </p>
+                                        </div>
+                                        <a href="?section_id=<?php echo $section_id; ?>&delete_schedule=<?php echo $sch['id']; ?>" 
+                                           class="delete-btn" onclick="return confirm('Delete this schedule?')">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
                                     </div>
-                                    <a href="?section_id=<?php echo $section_id; ?>&delete_schedule=<?php echo $sch['id']; ?>" 
-                                       class="delete-btn" 
-                                       onclick="return confirm('Are you sure you want to delete this schedule?')">
-                                        <i class="fas fa-trash"></i>
-                                    </a>
-                                </div>
-                            <?php endforeach; ?>
+                                <?php endforeach; ?>
+                            </div>
                         <?php else: ?>
                             <div class="no-data">
-                                <i class="fas fa-calendar-times"></i>
-                                <h3>No Schedule Yet</h3>
-                                <p>Add subjects to create the class schedule.</p>
+                                <i class="fas fa-calendar-day"></i>
+                                <p>No classes scheduled on Monday</p>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    
+                    <!-- Tuesday Schedule -->
+                    <div class="day-schedule" id="tuesday-schedule">
+                        <?php
+                        $tuesday_schedules = array_filter($schedules, function($sch) {
+                            return $sch['day_name'] == 'Tuesday';
+                        });
+                        ?>
+                        <?php if(count($tuesday_schedules) > 0): ?>
+                            <div class="schedule-list">
+                                <?php foreach($tuesday_schedules as $sch): ?>
+                                    <div class="schedule-item tuesday">
+                                        <div class="schedule-info">
+                                            <h4><?php echo htmlspecialchars($sch['subject_name']); ?></h4>
+                                            <p>
+                                                <span><i class="fas fa-user"></i> <?php echo htmlspecialchars($sch['teacher_name']); ?></span>
+                                                <span><i class="fas fa-clock"></i> <?php echo date('h:i A', strtotime($sch['start_time'])); ?></span>
+                                                <?php if($sch['room']): ?>
+                                                    <span><i class="fas fa-door-open"></i> <?php echo htmlspecialchars($sch['room']); ?></span>
+                                                <?php endif; ?>
+                                            </p>
+                                        </div>
+                                        <a href="?section_id=<?php echo $section_id; ?>&delete_schedule=<?php echo $sch['id']; ?>" 
+                                           class="delete-btn" onclick="return confirm('Delete this schedule?')">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else: ?>
+                            <div class="no-data">
+                                <i class="fas fa-calendar-day"></i>
+                                <p>No classes scheduled on Tuesday</p>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    
+                    <!-- Wednesday Schedule -->
+                    <div class="day-schedule" id="wednesday-schedule">
+                        <?php
+                        $wednesday_schedules = array_filter($schedules, function($sch) {
+                            return $sch['day_name'] == 'Wednesday';
+                        });
+                        ?>
+                        <?php if(count($wednesday_schedules) > 0): ?>
+                            <div class="schedule-list">
+                                <?php foreach($wednesday_schedules as $sch): ?>
+                                    <div class="schedule-item wednesday">
+                                        <div class="schedule-info">
+                                            <h4><?php echo htmlspecialchars($sch['subject_name']); ?></h4>
+                                            <p>
+                                                <span><i class="fas fa-user"></i> <?php echo htmlspecialchars($sch['teacher_name']); ?></span>
+                                                <span><i class="fas fa-clock"></i> <?php echo date('h:i A', strtotime($sch['start_time'])); ?></span>
+                                                <?php if($sch['room']): ?>
+                                                    <span><i class="fas fa-door-open"></i> <?php echo htmlspecialchars($sch['room']); ?></span>
+                                                <?php endif; ?>
+                                            </p>
+                                        </div>
+                                        <a href="?section_id=<?php echo $section_id; ?>&delete_schedule=<?php echo $sch['id']; ?>" 
+                                           class="delete-btn" onclick="return confirm('Delete this schedule?')">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else: ?>
+                            <div class="no-data">
+                                <i class="fas fa-calendar-day"></i>
+                                <p>No classes scheduled on Wednesday</p>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    
+                    <!-- Thursday Schedule -->
+                    <div class="day-schedule" id="thursday-schedule">
+                        <?php
+                        $thursday_schedules = array_filter($schedules, function($sch) {
+                            return $sch['day_name'] == 'Thursday';
+                        });
+                        ?>
+                        <?php if(count($thursday_schedules) > 0): ?>
+                            <div class="schedule-list">
+                                <?php foreach($thursday_schedules as $sch): ?>
+                                    <div class="schedule-item thursday">
+                                        <div class="schedule-info">
+                                            <h4><?php echo htmlspecialchars($sch['subject_name']); ?></h4>
+                                            <p>
+                                                <span><i class="fas fa-user"></i> <?php echo htmlspecialchars($sch['teacher_name']); ?></span>
+                                                <span><i class="fas fa-clock"></i> <?php echo date('h:i A', strtotime($sch['start_time'])); ?></span>
+                                                <?php if($sch['room']): ?>
+                                                    <span><i class="fas fa-door-open"></i> <?php echo htmlspecialchars($sch['room']); ?></span>
+                                                <?php endif; ?>
+                                            </p>
+                                        </div>
+                                        <a href="?section_id=<?php echo $section_id; ?>&delete_schedule=<?php echo $sch['id']; ?>" 
+                                           class="delete-btn" onclick="return confirm('Delete this schedule?')">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else: ?>
+                            <div class="no-data">
+                                <i class="fas fa-calendar-day"></i>
+                                <p>No classes scheduled on Thursday</p>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    
+                    <!-- Friday Schedule -->
+                    <div class="day-schedule" id="friday-schedule">
+                        <?php
+                        $friday_schedules = array_filter($schedules, function($sch) {
+                            return $sch['day_name'] == 'Friday';
+                        });
+                        ?>
+                        <?php if(count($friday_schedules) > 0): ?>
+                            <div class="schedule-list">
+                                <?php foreach($friday_schedules as $sch): ?>
+                                    <div class="schedule-item friday">
+                                        <div class="schedule-info">
+                                            <h4><?php echo htmlspecialchars($sch['subject_name']); ?></h4>
+                                            <p>
+                                                <span><i class="fas fa-user"></i> <?php echo htmlspecialchars($sch['teacher_name']); ?></span>
+                                                <span><i class="fas fa-clock"></i> <?php echo date('h:i A', strtotime($sch['start_time'])); ?></span>
+                                                <?php if($sch['room']): ?>
+                                                    <span><i class="fas fa-door-open"></i> <?php echo htmlspecialchars($sch['room']); ?></span>
+                                                <?php endif; ?>
+                                            </p>
+                                        </div>
+                                        <a href="?section_id=<?php echo $section_id; ?>&delete_schedule=<?php echo $sch['id']; ?>" 
+                                           class="delete-btn" onclick="return confirm('Delete this schedule?')">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else: ?>
+                            <div class="no-data">
+                                <i class="fas fa-calendar-day"></i>
+                                <p>No classes scheduled on Friday</p>
                             </div>
                         <?php endif; ?>
                     </div>
@@ -507,9 +616,9 @@ foreach($schedules as $sch) {
             <!-- Weekly Schedule View -->
             <div class="card" style="margin-top: 20px;">
                 <div class="card-header">
-                    <h3><i class="fas fa-table"></i> Weekly Schedule View</h3>
+                    <h3><i class="fas fa-calendar-week"></i> Weekly Schedule View</h3>
+                    <span class="badge-count"><?php echo count($schedules); ?> classes</span>
                 </div>
-                
                 <div class="weekly-schedule">
                     <table class="schedule-table">
                         <thead>
@@ -524,60 +633,102 @@ foreach($schedules as $sch) {
                         </thead>
                         <tbody>
                             <?php
-                            // Reset time slots for the rows
-                            $time_slots = $time_slots_stmt->fetchAll(PDO::FETCH_ASSOC);
-                            foreach($time_slots as $slot): 
-                                $start = date('h:i A', strtotime($slot['start_time']));
-                                $end = date('h:i A', strtotime($slot['end_time']));
+                            // Re-fetch time slots
+                            $time_slots_query = $conn->query("SELECT * FROM time_slots ORDER BY start_time");
+                            $all_time_slots = $time_slots_query->fetchAll(PDO::FETCH_ASSOC);
+                            
+                            // Group schedules by day and time slot
+                            $schedule_by_day_time = [];
+                            foreach($schedules as $sch) {
+                                $day = $sch['day_name'];
+                                $time_slot_id = $sch['time_slot_id'];
+                                $schedule_by_day_time[$day][$time_slot_id] = $sch;
+                            }
+                            
+                            foreach($all_time_slots as $slot):
+                                $start_time = date('h:i A', strtotime($slot['start_time']));
+                                $end_time = date('h:i A', strtotime($slot['end_time']));
                             ?>
                                 <tr>
-                                    <td class="time-cell">
-                                        <?php echo $start; ?> - <?php echo $end; ?>
+                                    <td class="time-cell"><?php echo $start_time; ?> - <?php echo $end_time; ?></td>
+                                    
+                                    <td class="<?php echo isset($schedule_by_day_time['Monday'][$slot['id']]) ? 'schedule-cell' : 'empty-cell'; ?>">
+                                        <?php if(isset($schedule_by_day_time['Monday'][$slot['id']])): 
+                                            $s = $schedule_by_day_time['Monday'][$slot['id']];
+                                        ?>
+                                            <div class="subject-name"><strong><?php echo htmlspecialchars($s['subject_name']); ?></strong></div>
+                                            <div class="teacher-name"><i class="fas fa-user"></i> <?php echo htmlspecialchars($s['teacher_name']); ?></div>
+                                            <?php if($s['room']): ?>
+                                                <div class="room-badge"><i class="fas fa-door-open"></i> <?php echo htmlspecialchars($s['room']); ?></div>
+                                            <?php endif; ?>
+                                        <?php else: ?>—<?php endif; ?>
                                     </td>
-                                    <?php
-                                    $days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-                                    foreach($days_of_week as $day):
-                                        $found = false;
-                                        if(isset($weekly_schedule[$day])) {
-                                            foreach($weekly_schedule[$day] as $class) {
-                                                if($class['time_slot_id'] == $slot['id']) {
-                                                    $found = true;
-                                                    ?>
-                                                    <td class="schedule-cell">
-                                                        <div class="subject-name"><?php echo htmlspecialchars($class['subject_name']); ?></div>
-                                                        <div class="teacher-name"><?php echo htmlspecialchars($class['teacher_name']); ?></div>
-                                                        <?php if($class['room']): ?>
-                                                            <div class="room-badge"><?php echo htmlspecialchars($class['room']); ?></div>
-                                                        <?php endif; ?>
-                                                    </td>
-                                                    <?php
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                        if(!$found) {
-                                            echo '<td class="empty-cell">—</td>';
-                                        }
-                                    endforeach;
-                                    ?>
+                                    
+                                    <td class="<?php echo isset($schedule_by_day_time['Tuesday'][$slot['id']]) ? 'schedule-cell' : 'empty-cell'; ?>">
+                                        <?php if(isset($schedule_by_day_time['Tuesday'][$slot['id']])): 
+                                            $s = $schedule_by_day_time['Tuesday'][$slot['id']];
+                                        ?>
+                                            <div class="subject-name"><strong><?php echo htmlspecialchars($s['subject_name']); ?></strong></div>
+                                            <div class="teacher-name"><i class="fas fa-user"></i> <?php echo htmlspecialchars($s['teacher_name']); ?></div>
+                                            <?php if($s['room']): ?>
+                                                <div class="room-badge"><i class="fas fa-door-open"></i> <?php echo htmlspecialchars($s['room']); ?></div>
+                                            <?php endif; ?>
+                                        <?php else: ?>—<?php endif; ?>
+                                    </td>
+                                    
+                                    <td class="<?php echo isset($schedule_by_day_time['Wednesday'][$slot['id']]) ? 'schedule-cell' : 'empty-cell'; ?>">
+                                        <?php if(isset($schedule_by_day_time['Wednesday'][$slot['id']])): 
+                                            $s = $schedule_by_day_time['Wednesday'][$slot['id']];
+                                        ?>
+                                            <div class="subject-name"><strong><?php echo htmlspecialchars($s['subject_name']); ?></strong></div>
+                                            <div class="teacher-name"><i class="fas fa-user"></i> <?php echo htmlspecialchars($s['teacher_name']); ?></div>
+                                            <?php if($s['room']): ?>
+                                                <div class="room-badge"><i class="fas fa-door-open"></i> <?php echo htmlspecialchars($s['room']); ?></div>
+                                            <?php endif; ?>
+                                        <?php else: ?>—<?php endif; ?>
+                                    </td>
+                                    
+                                    <td class="<?php echo isset($schedule_by_day_time['Thursday'][$slot['id']]) ? 'schedule-cell' : 'empty-cell'; ?>">
+                                        <?php if(isset($schedule_by_day_time['Thursday'][$slot['id']])): 
+                                            $s = $schedule_by_day_time['Thursday'][$slot['id']];
+                                        ?>
+                                            <div class="subject-name"><strong><?php echo htmlspecialchars($s['subject_name']); ?></strong></div>
+                                            <div class="teacher-name"><i class="fas fa-user"></i> <?php echo htmlspecialchars($s['teacher_name']); ?></div>
+                                            <?php if($s['room']): ?>
+                                                <div class="room-badge"><i class="fas fa-door-open"></i> <?php echo htmlspecialchars($s['room']); ?></div>
+                                            <?php endif; ?>
+                                        <?php else: ?>—<?php endif; ?>
+                                    </td>
+                                    
+                                    <td class="<?php echo isset($schedule_by_day_time['Friday'][$slot['id']]) ? 'schedule-cell' : 'empty-cell'; ?>">
+                                        <?php if(isset($schedule_by_day_time['Friday'][$slot['id']])): 
+                                            $s = $schedule_by_day_time['Friday'][$slot['id']];
+                                        ?>
+                                            <div class="subject-name"><strong><?php echo htmlspecialchars($s['subject_name']); ?></strong></div>
+                                            <div class="teacher-name"><i class="fas fa-user"></i> <?php echo htmlspecialchars($s['teacher_name']); ?></div>
+                                            <?php if($s['room']): ?>
+                                                <div class="room-badge"><i class="fas fa-door-open"></i> <?php echo htmlspecialchars($s['room']); ?></div>
+                                            <?php endif; ?>
+                                        <?php else: ?>—<?php endif; ?>
+                                    </td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
-                    </table>
+                    </div>
                 </div>
             </div>
         </main>
     </div>
 
-    <!-- JavaScript -->
-<script src="js/create_schedule.js"></script>
-<script>
-    // Pass PHP data to JavaScript
-    window.takenTeachersData = <?php echo json_encode($taken_teachers_by_day_time); ?>;
-    window.takenRoomsData = <?php echo json_encode($taken_rooms_by_day_time); ?>;
-    window.takenSubjectsData = <?php echo json_encode($taken_subjects); ?>;
-    window.sectionId = <?php echo $section_id; ?>;
-    window.currentSchoolYear = '<?php echo $current_school_year; ?>';
-</script>
+    <script>
+        // Pass PHP data to JavaScript
+        window.takenTeachersData = <?php echo json_encode($taken_teachers_by_day_time); ?>;
+        window.takenRoomsData = <?php echo json_encode($taken_rooms_by_day_time); ?>;
+        window.takenSubjectsByDay = <?php echo json_encode($taken_subjects_by_day); ?>;
+        window.sectionId = <?php echo $section_id; ?>;
+        window.currentSchoolYear = '<?php echo $current_school_year; ?>';
+        window.currentQuarter = '1';
+    </script>
+    <script src="js/create_schedule.js"></script>
 </body>
 </html>

@@ -47,18 +47,36 @@ $stmt = $conn->prepare($sections_query);
 $stmt->execute([':teacher_id' => $teacher_id]);
 $sections = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Get teacher's subjects
+// Get teacher's subjects from class_schedules (since teacher_subjects doesn't exist)
 $subjects_query = "
-    SELECT sub.*, 
-           g.grade_name,
-           (SELECT COUNT(*) FROM attendance WHERE subject_id = sub.id) as attendance_count
-    FROM subjects sub
+    SELECT DISTINCT sub.*, 
+           g.grade_name
+    FROM class_schedules cs
+    JOIN subjects sub ON cs.subject_id = sub.id
     JOIN grade_levels g ON sub.grade_id = g.id
+    WHERE cs.teacher_id = :teacher_id AND cs.status = 'active'
     ORDER BY g.id, sub.subject_name
 ";
 
-$subjects_stmt = $conn->query($subjects_query);
+$subjects_stmt = $conn->prepare($subjects_query);
+$subjects_stmt->execute([':teacher_id' => $teacher_id]);
 $subjects = $subjects_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// If no subjects found in class_schedules, try to get from sections (adviser subjects)
+if(empty($subjects)) {
+    $subjects_query = "
+        SELECT DISTINCT sub.*, 
+               g.grade_name
+        FROM sections s
+        JOIN grade_levels g ON s.grade_id = g.id
+        JOIN subjects sub ON sub.grade_id = g.id
+        WHERE s.adviser_id = :teacher_id
+        ORDER BY g.id, sub.subject_name
+    ";
+    $subjects_stmt = $conn->prepare($subjects_query);
+    $subjects_stmt->execute([':teacher_id' => $teacher_id]);
+    $subjects = $subjects_stmt->fetchAll(PDO::FETCH_ASSOC);
+}
 
 // Group subjects by grade level
 $subjects_by_grade = [];
@@ -135,11 +153,14 @@ if(!empty($sections)) {
     }
 }
 
-// Calculate total students
+// Calculate total students from sections
 $total_students = 0;
 foreach($sections as $section) {
     $total_students += $section['student_count'];
 }
+
+// Get total assigned subjects count
+$total_assigned_subjects = count($subjects);
 ?>
 
 <!DOCTYPE html>
@@ -250,7 +271,7 @@ foreach($sections as $section) {
                         <h3>Subjects</h3>
                         <div class="stat-icon"><i class="fas fa-book"></i></div>
                     </div>
-                    <div class="stat-number"><?php echo count($subjects); ?></div>
+                    <div class="stat-number"><?php echo $total_assigned_subjects; ?></div>
                     <div class="stat-label">Subjects taught</div>
                 </div>
 
@@ -394,6 +415,7 @@ foreach($sections as $section) {
                         <i class="fas fa-book"></i>
                         <h3>No Subjects Assigned</h3>
                         <p>You are not assigned to teach any subjects yet.</p>
+                        <p style="font-size: 13px; margin-top: 10px;">Subjects will appear here once you have class schedules or advisory sections.</p>
                     </div>
                 <?php endif; ?>
             </div>
@@ -410,11 +432,9 @@ foreach($sections as $section) {
                                     <div class="day-header"><?php echo $day; ?></div>
                                     
                                     <?php 
-                                    $has_schedule = false;
                                     $day_schedules = $schedule_by_day[$day] ?? [];
                                     
                                     if(!empty($day_schedules)):
-                                        $has_schedule = true;
                                         foreach($day_schedules as $schedule):
                                     ?>
                                         <div class="time-slot">
@@ -470,7 +490,7 @@ foreach($sections as $section) {
         // Pass PHP data to JavaScript
         const classesData = {
             totalSections: <?php echo count($sections); ?>,
-            totalSubjects: <?php echo count($subjects); ?>,
+            totalSubjects: <?php echo $total_assigned_subjects; ?>,
             totalStudents: <?php echo $total_students; ?>
         };
         
@@ -479,14 +499,36 @@ foreach($sections as $section) {
             const content = document.getElementById('content_' + gradeId);
             const icon = document.getElementById('icon_' + gradeId);
             
-            if (content.classList.contains('active')) {
-                content.classList.remove('active');
-                icon.classList.remove('rotated');
-            } else {
-                content.classList.add('active');
-                icon.classList.add('rotated');
+            if (content && icon) {
+                if (content.classList.contains('active')) {
+                    content.classList.remove('active');
+                    icon.classList.remove('rotated');
+                } else {
+                    content.classList.add('active');
+                    icon.classList.add('rotated');
+                }
             }
         }
+        
+        // Tab switching functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const tabId = this.getAttribute('data-tab');
+                    
+                    // Remove active class from all tabs
+                    tabBtns.forEach(btn => btn.classList.remove('active'));
+                    tabContents.forEach(content => content.classList.remove('active-tab'));
+                    
+                    // Add active class to current tab
+                    this.classList.add('active');
+                    document.getElementById(tabId).classList.add('active-tab');
+                });
+            });
+        });
         
         // Auto-hide alerts after 5 seconds
         setTimeout(function() {
@@ -494,7 +536,7 @@ foreach($sections as $section) {
             alerts.forEach(alert => {
                 alert.style.opacity = '0';
                 setTimeout(() => {
-                    alert.style.display = 'none';
+                    if (alert.parentNode) alert.remove();
                 }, 300);
             });
         }, 5000);

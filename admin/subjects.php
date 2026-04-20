@@ -76,20 +76,13 @@ if(isset($_GET['delete'])) {
     $delete_id = $_GET['delete'];
     
     try {
-        $check_attendance = $conn->prepare("SELECT id FROM attendance WHERE subject_id = ?");
-        $check_attendance->execute([$delete_id]);
+        $delete = $conn->prepare("DELETE FROM subjects WHERE id = ?");
+        $delete->execute([$delete_id]);
         
-        if($check_attendance->rowCount() > 0) {
-            $error_message = "Cannot delete subject because it has attendance records.";
+        if($delete->rowCount() > 0) {
+            $success_message = "Subject deleted successfully!";
         } else {
-            $delete = $conn->prepare("DELETE FROM subjects WHERE id = ?");
-            $delete->execute([$delete_id]);
-            
-            if($delete->rowCount() > 0) {
-                $success_message = "Subject deleted successfully!";
-            } else {
-                $error_message = "Error deleting subject.";
-            }
+            $error_message = "Error deleting subject.";
         }
     } catch(PDOException $e) {
         $error_message = "Error: " . $e->getMessage();
@@ -100,10 +93,9 @@ if(isset($_GET['delete'])) {
 $grade_filter = isset($_GET['grade']) ? $_GET['grade'] : '';
 $search_query = isset($_GET['search']) ? $_GET['search'] : '';
 
-// Build the query
+// Build the query (REMOVED attendance subquery)
 $query = "
-    SELECT s.*, g.grade_name, g.id as grade_id,
-           (SELECT COUNT(*) FROM attendance WHERE subject_id = s.id) as attendance_count
+    SELECT s.*, g.grade_name, g.id as grade_id
     FROM subjects s
     JOIN grade_levels g ON s.grade_id = g.id
     WHERE 1=1
@@ -163,10 +155,8 @@ $grade_counts_stmt = $conn->prepare($grade_count_query);
 $grade_counts_stmt->execute();
 $grade_counts = $grade_counts_stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Get subjects with attendance
-$with_attendance_stmt = $conn->prepare("SELECT COUNT(DISTINCT subject_id) as count FROM attendance");
-$with_attendance_stmt->execute();
-$with_attendance = $with_attendance_stmt->fetch(PDO::FETCH_ASSOC)['count'];
+// REMOVED attendance query - set to 0
+$with_attendance = 0;
 
 // Calculate JHS and SHS counts
 $jhs_count = 0;
@@ -174,7 +164,7 @@ $shs_count = 0;
 foreach($grade_counts as $gc) {
     if($gc['id'] <= 4) {
         $jhs_count += $gc['subject_count'];
-    } else {
+    } else if($gc['id'] >= 5 && $gc['id'] <= 6) {
         $shs_count += $gc['subject_count'];
     }
 }
@@ -292,9 +282,9 @@ foreach($grade_counts as $gc) {
                 <div class="stat-label">Grades 11-12</div>
             </div>
             <div class="stat-card">
-                <div class="stat-header"><h3>With Attendance</h3><div class="stat-icon"><i class="fas fa-calendar-check"></i></div></div>
-                <div class="stat-number"><?php echo $with_attendance; ?></div>
-                <div class="stat-label">Subjects with records</div>
+                <div class="stat-header"><h3>Total Grades</h3><div class="stat-icon"><i class="fas fa-layer-group"></i></div></div>
+                <div class="stat-number">6</div>
+                <div class="stat-label">Grade levels</div>
             </div>
         </div>
 
@@ -377,9 +367,9 @@ foreach($grade_counts as $gc) {
                                         </td>
                                         <td>
                                             <div class="action-btns">
-                                                <?php if($subject['attendance_count'] == 0): ?>
-                                                    <a href="?delete=<?php echo $subject['id']; ?>" class="action-btn delete" onclick="return confirm('Delete this subject?')" title="Delete"><i class="fas fa-trash"></i></a>
-                                                <?php endif; ?>
+                                                <a href="?delete=<?php echo $subject['id']; ?>" class="action-btn delete" onclick="return confirm('Delete this subject?')" title="Delete">
+                                                    <i class="fas fa-trash"></i>
+                                                </a>
                                             </div>
                                         </td>
                                     </tr>

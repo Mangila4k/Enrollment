@@ -14,11 +14,12 @@
 }
 
 .stat-card {
-    background: var(--bg-white);
+    background: white;
     border-radius: 20px;
     padding: 25px;
-    box-shadow: var(--shadow);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
     transition: all 0.3s ease;
+    position: relative;
     overflow: hidden;
 }
 
@@ -29,12 +30,12 @@
     left: 0;
     right: 0;
     height: 4px;
-    background: linear-gradient(90deg, var(--primary), var(--secondary), var(--primary-light));
+    background: linear-gradient(90deg, #0B4F2E, #FFD700, #1a7a42);
 }
 
 .stat-card:hover {
     transform: translateY(-5px);
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
 }
 
 .stat-header {
@@ -47,7 +48,7 @@
 .stat-header h3 {
     font-size: 14px;
     font-weight: 600;
-    color: var(--text-gray);
+    color: #666;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin: 0;
@@ -62,12 +63,12 @@
     align-items: center;
     justify-content: center;
     font-size: 24px;
-    color: var(--primary);
+    color: #0B4F2E;
     transition: all 0.3s ease;
 }
 
 .stat-card:hover .stat-icon {
-    background: var(--primary);
+    background: #0B4F2E;
     color: white;
     transform: scale(1.05) rotate(5deg);
 }
@@ -75,51 +76,18 @@
 .stat-number {
     font-size: 36px;
     font-weight: 800;
-    color: var(--text-dark);
+    color: #333;
     margin-bottom: 8px;
     line-height: 1;
 }
 
 .stat-label {
     font-size: 13px;
-    color: var(--text-gray);
+    color: #666;
     font-weight: 500;
 }
 
-/* Stat Card Variations */
-.stat-card.total {
-    border-left: 4px solid var(--primary);
-}
-
-.stat-card.subjects {
-    border-left: 4px solid var(--info);
-}
-
-.stat-card.grades {
-    border-left: 4px solid var(--success);
-}
-
-.stat-card.teachers {
-    border-left: 4px solid var(--warning);
-}
-
-/* Animation for stat numbers */
-@keyframes countUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.stat-number {
-    animation: countUp 0.5s ease-out;
-}
-
-/* ===== GRADE CARDS (Quick Navigation) ===== */
+/* ===== GRADE CARDS ===== */
 .grade-cards {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
@@ -128,18 +96,17 @@
 }
 
 .grade-card {
-    background: var(--bg-white);
+    background: white;
     border-radius: 16px;
     padding: 20px 15px;
     text-align: center;
     transition: all 0.3s ease;
-    cursor: pointer;
-    border: 2px solid transparent;
     text-decoration: none;
     display: block;
     position: relative;
     overflow: hidden;
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    border: 2px solid transparent;
 }
 
 .grade-card::before {
@@ -149,7 +116,7 @@
     left: 0;
     right: 0;
     height: 3px;
-    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    background: linear-gradient(90deg, #0B4F2E, #FFD700);
     transform: scaleX(0);
     transition: transform 0.3s ease;
 }
@@ -160,31 +127,29 @@
 
 .grade-card:hover {
     transform: translateY(-5px);
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
     border-color: rgba(11, 79, 46, 0.1);
 }
 
 .grade-card.active {
-    border-color: var(--primary);
-    background: linear-gradient(135deg, var(--primary), var(--primary-light));
-    box-shadow: var(--shadow-md);
+    border-color: #0B4F2E;
+    background: linear-gradient(135deg, #0B4F2E, #1a7a42);
 }
 
 .grade-card.active::before {
     transform: scaleX(1);
-    background: var(--secondary);
+    background: #FFD700;
 }
 
 .grade-card.active .grade-number,
-.grade-card.active .grade-name,
-.grade-card.active .grade-subject-count {
+.grade-card.active .grade-name {
     color: white;
 }
 
 .grade-number {
     font-size: 28px;
     font-weight: 800;
-    color: var(--text-dark);
+    color: #333;
     margin-bottom: 8px;
     line-height: 1;
 }
@@ -192,48 +157,12 @@
 .grade-name {
     font-size: 14px;
     font-weight: 600;
-    color: var(--text-gray);
-    margin-bottom: 10px;
-}
-
-.grade-subject-count {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--primary);
-    background: rgba(11, 79, 46, 0.1);
-    padding: 4px 10px;
-    border-radius: 20px;
-    display: inline-block;
-}
-
-.grade-card.active .grade-subject-count {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-}
-
-/* Grade card icon */
-.grade-card i {
-    font-size: 32px;
-    margin-bottom: 10px;
-    display: block;
-    color: var(--primary);
-    opacity: 0.7;
-    transition: all 0.3s;
-}
-
-.grade-card:hover i {
-    opacity: 1;
-    transform: scale(1.1);
-}
-
-.grade-card.active i {
-    color: var(--secondary);
-    opacity: 1;
+    color: #666;
 }
 
 /* ===== ACTIONS BAR ===== */
 .actions-bar {
-    background: var(--bg-white);
+    background: white;
     border-radius: 16px;
     padding: 20px;
     margin-bottom: 25px;
@@ -242,7 +171,7 @@
     align-items: center;
     flex-wrap: wrap;
     gap: 15px;
-    box-shadow: var(--shadow);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
 .filter-group {
@@ -253,7 +182,7 @@
 
 .filter-select {
     padding: 10px 15px;
-    border: 1px solid var(--border);
+    border: 1px solid #e0e0e0;
     border-radius: 10px;
     font-size: 14px;
     background: white;
@@ -262,12 +191,12 @@
 }
 
 .filter-select:hover {
-    border-color: var(--primary);
+    border-color: #0B4F2E;
 }
 
 .filter-select:focus {
     outline: none;
-    border-color: var(--primary);
+    border-color: #0B4F2E;
     box-shadow: 0 0 0 3px rgba(11, 79, 46, 0.1);
 }
 
@@ -275,20 +204,20 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    background: var(--bg-light);
-    border: 1px solid var(--border);
+    background: #f8f9fa;
+    border: 1px solid #e0e0e0;
     border-radius: 12px;
     padding: 0 15px;
     transition: all 0.3s;
 }
 
 .search-box:focus-within {
-    border-color: var(--primary);
+    border-color: #0B4F2E;
     box-shadow: 0 0 0 3px rgba(11, 79, 46, 0.1);
 }
 
 .search-box i {
-    color: var(--text-gray);
+    color: #999;
 }
 
 .search-box input {
@@ -304,7 +233,7 @@
 }
 
 .btn-filter {
-    background: var(--primary);
+    background: #0B4F2E;
     color: white;
     padding: 10px 20px;
     border-radius: 10px;
@@ -318,13 +247,13 @@
 }
 
 .btn-filter:hover {
-    background: var(--primary-light);
+    background: #1a7a42;
     transform: translateY(-2px);
 }
 
 .btn-reset {
-    background: var(--bg-light);
-    color: var(--text-gray);
+    background: #f8f9fa;
+    color: #666;
     padding: 10px 20px;
     border-radius: 10px;
     text-decoration: none;
@@ -332,18 +261,18 @@
     align-items: center;
     gap: 8px;
     font-weight: 500;
-    border: 1px solid var(--border);
+    border: 1px solid #e0e0e0;
     transition: all 0.3s;
 }
 
 .btn-reset:hover {
-    border-color: var(--primary);
-    color: var(--primary);
+    border-color: #0B4F2E;
+    color: #0B4F2E;
     transform: translateY(-2px);
 }
 
 .btn-add {
-    background: var(--primary);
+    background: #0B4F2E;
     color: white;
     padding: 10px 20px;
     border-radius: 10px;
@@ -358,22 +287,22 @@
 }
 
 .btn-add:hover {
-    background: var(--primary-light);
+    background: #1a7a42;
     transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
+    box-shadow: 0 4px 12px rgba(11, 79, 46, 0.2);
 }
 
-/* ===== GRADE SECTION (Collapsible) ===== */
+/* ===== GRADE SECTION ===== */
 .grade-section {
-    background: var(--bg-white);
+    background: white;
     border-radius: 20px;
     margin-bottom: 25px;
     overflow: hidden;
-    box-shadow: var(--shadow);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
 .grade-section-header {
-    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    background: linear-gradient(135deg, #0B4F2E, #1a7a42);
     color: white;
     padding: 18px 25px;
     display: flex;
@@ -384,7 +313,7 @@
 }
 
 .grade-section-header:hover {
-    background: linear-gradient(135deg, var(--primary-light), var(--primary));
+    background: linear-gradient(135deg, #1a7a42, #0B4F2E);
 }
 
 .grade-section-header h2 {
@@ -397,7 +326,7 @@
 }
 
 .grade-section-header h2 i {
-    color: var(--secondary);
+    color: #FFD700;
     font-size: 20px;
 }
 
@@ -407,7 +336,6 @@
     border-radius: 20px;
     font-size: 12px;
     font-weight: 500;
-    color: white;
 }
 
 .grade-section-header .toggle-icon {
@@ -421,7 +349,7 @@
 
 .grade-section-content {
     transition: all 0.3s;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid #e0e0e0;
 }
 
 .grade-section-content.collapsed {
@@ -429,60 +357,45 @@
 }
 
 /* ===== SUBJECTS TABLE ===== */
-.table-container {
-    overflow-x: auto;
-    margin-top: 0;
-}
-
 .subjects-table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 600px;
 }
 
 .subjects-table th {
     text-align: left;
     padding: 16px 20px;
-    background: var(--bg-light);
-    color: var(--text-gray);
+    background: #f8f9fa;
+    color: #666;
     font-weight: 600;
     font-size: 13px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    border-bottom: 2px solid var(--border);
+    border-bottom: 2px solid #e0e0e0;
 }
 
-/* Make Actions header align to the right */
 .subjects-table th:last-child {
     text-align: right;
 }
 
 .subjects-table td {
     padding: 16px 20px;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid #f0f0f0;
     font-size: 14px;
-    color: var(--text-dark);
+    color: #333;
     vertical-align: middle;
 }
 
-/* Make Actions cell content align to the right */
 .subjects-table td:last-child {
     text-align: right;
 }
 
 .subjects-table tbody tr:hover {
-    background: var(--bg-light);
+    background: #f8f9fa;
 }
 
 .subjects-table tbody tr:last-child td {
     border-bottom: none;
-}
-
-/* Action buttons container - keep buttons aligned right but not stretched */
-.action-btns {
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
 }
 
 /* ===== SUBJECT INFO ===== */
@@ -500,14 +413,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--primary);
+    color: #0B4F2E;
     font-size: 20px;
     flex-shrink: 0;
     transition: all 0.3s;
 }
 
 tr:hover .subject-icon {
-    background: var(--primary);
+    background: #0B4F2E;
     color: white;
     transform: scale(1.05);
 }
@@ -520,39 +433,21 @@ tr:hover .subject-icon {
     font-size: 16px;
     font-weight: 600;
     margin-bottom: 4px;
-    color: var(--text-dark);
+    color: #333;
 }
 
 .subject-details span {
     font-size: 12px;
-    color: var(--text-gray);
+    color: #666;
     display: block;
     margin-top: 2px;
-}
-
-/* ===== ATTENDANCE BADGE ===== */
-.attendance-badge {
-    background: rgba(59, 130, 246, 0.1);
-    color: #3b82f6;
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 500;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    white-space: nowrap;
-}
-
-.attendance-badge i {
-    font-size: 12px;
 }
 
 /* ===== ACTION BUTTONS ===== */
 .action-btns {
     display: flex;
     gap: 10px;
-    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 .action-btn {
@@ -564,10 +459,10 @@ tr:hover .subject-icon {
     justify-content: center;
     text-decoration: none;
     transition: all 0.3s;
-    color: var(--text-gray);
     cursor: pointer;
-    background: var(--bg-light);
+    background: #f8f9fa;
     border: none;
+    color: #666;
 }
 
 .action-btn:hover {
@@ -575,17 +470,17 @@ tr:hover .subject-icon {
 }
 
 .action-btn.view:hover {
-    background: var(--primary);
+    background: #3b82f6;
     color: white;
 }
 
 .action-btn.edit:hover {
-    background: var(--info);
+    background: #f59e0b;
     color: white;
 }
 
 .action-btn.delete:hover {
-    background: var(--danger);
+    background: #ef4444;
     color: white;
 }
 
@@ -628,7 +523,7 @@ tr:hover .subject-icon {
 
 .modal-header {
     padding: 20px 25px;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid #e0e0e0;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -640,11 +535,12 @@ tr:hover .subject-icon {
     display: flex;
     align-items: center;
     gap: 8px;
-    color: var(--text-dark);
+    color: #333;
+    margin: 0;
 }
 
 .modal-header h3 i {
-    color: var(--primary);
+    color: #0B4F2E;
 }
 
 .close-modal {
@@ -652,12 +548,12 @@ tr:hover .subject-icon {
     border: none;
     font-size: 24px;
     cursor: pointer;
-    color: var(--text-gray);
+    color: #666;
     transition: color 0.3s;
 }
 
 .close-modal:hover {
-    color: var(--danger);
+    color: #ef4444;
 }
 
 .modal-body {
@@ -666,7 +562,7 @@ tr:hover .subject-icon {
 
 .modal-footer {
     padding: 20px 25px;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid #e0e0e0;
     display: flex;
     justify-content: flex-end;
     gap: 12px;
@@ -680,7 +576,7 @@ tr:hover .subject-icon {
 .form-group label {
     display: block;
     margin-bottom: 8px;
-    color: var(--text-gray);
+    color: #666;
     font-weight: 500;
     font-size: 13px;
 }
@@ -690,7 +586,7 @@ tr:hover .subject-icon {
 .form-group textarea {
     width: 100%;
     padding: 10px 12px;
-    border: 1px solid var(--border);
+    border: 1px solid #e0e0e0;
     border-radius: 10px;
     font-size: 14px;
     transition: all 0.3s;
@@ -700,14 +596,14 @@ tr:hover .subject-icon {
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus {
-    border-color: var(--primary);
+    border-color: #0B4F2E;
     outline: none;
     box-shadow: 0 0 0 3px rgba(11, 79, 46, 0.1);
 }
 
 /* ===== BUTTONS ===== */
 .btn-save {
-    background: var(--primary);
+    background: #0B4F2E;
     color: white;
     padding: 10px 20px;
     border: none;
@@ -718,13 +614,13 @@ tr:hover .subject-icon {
 }
 
 .btn-save:hover {
-    background: var(--primary-light);
+    background: #1a7a42;
     transform: translateY(-2px);
 }
 
 .btn-cancel {
-    background: var(--bg-light);
-    color: var(--text-gray);
+    background: #f8f9fa;
+    color: #666;
     padding: 10px 20px;
     border: none;
     border-radius: 10px;
@@ -734,14 +630,14 @@ tr:hover .subject-icon {
 }
 
 .btn-cancel:hover {
-    background: var(--border);
+    background: #e0e0e0;
 }
 
 /* ===== NO DATA ===== */
 .no-data {
     text-align: center;
     padding: 60px;
-    color: var(--text-gray);
+    color: #666;
 }
 
 .no-data i {
@@ -751,12 +647,8 @@ tr:hover .subject-icon {
 }
 
 .no-data h3 {
-    color: var(--text-dark);
+    color: #333;
     margin-bottom: 10px;
-}
-
-.no-data p {
-    margin-top: 10px;
 }
 
 /* ===== RESPONSIVE ===== */
@@ -764,7 +656,6 @@ tr:hover .subject-icon {
     .stats-grid {
         gap: 15px;
     }
-    
     .grade-cards {
         grid-template-columns: repeat(3, 1fr);
         gap: 15px;
@@ -781,79 +672,53 @@ tr:hover .subject-icon {
     .stats-grid {
         grid-template-columns: 1fr;
     }
-    
     .grade-cards {
         grid-template-columns: repeat(2, 1fr);
     }
-    
     .actions-bar {
         flex-direction: column;
         align-items: stretch;
     }
-    
     .filter-group {
         width: 100%;
         flex-direction: column;
     }
-    
     .filter-select {
         width: 100%;
     }
-    
     .search-box {
         width: 100%;
     }
-    
     .search-box input {
         width: 100%;
     }
-    
     .btn-filter, .btn-reset, .btn-add {
         width: 100%;
         justify-content: center;
     }
-    
     .grade-section-header {
         flex-direction: column;
         gap: 10px;
         text-align: center;
     }
-    
     .grade-section-header h2 {
         justify-content: center;
     }
-    
     .subjects-table th,
     .subjects-table td {
         padding: 12px 15px;
     }
-    
     .subject-info {
         flex-direction: column;
         text-align: center;
         gap: 10px;
     }
-    
     .subject-icon {
         width: 40px;
         height: 40px;
         font-size: 18px;
+        margin: 0 auto;
     }
-    
-    .subject-details h4 {
-        font-size: 14px;
-    }
-    
-    .subject-details span {
-        font-size: 11px;
-    }
-    
-    .attendance-badge {
-        padding: 4px 10px;
-        font-size: 11px;
-        white-space: nowrap;
-    }
-    
     .action-btns {
         justify-content: center;
     }
@@ -863,11 +728,9 @@ tr:hover .subject-icon {
     .grade-cards {
         grid-template-columns: 1fr;
     }
-    
     .grade-number {
         font-size: 24px;
     }
-    
     .stat-number {
         font-size: 28px;
     }

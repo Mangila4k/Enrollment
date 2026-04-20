@@ -369,58 +369,6 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                     </div>
                 </form>
             </div>
-
-            <!-- Password Reset Form -->
-            <div class="form-card">
-                <h3><i class="fas fa-key"></i> Password Management</h3>
-                
-                <div class="password-reset-section">
-                    <div class="password-header">
-                        <input type="checkbox" id="reset_password_checkbox">
-                        <label for="reset_password_checkbox">Reset student password</label>
-                    </div>
-
-                    <form method="POST" action="" id="passwordForm">
-                        <div class="password-fields" id="passwordFields">
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>New Password <span>*</span></label>
-                                    <div class="input-wrapper">
-                                        <input type="password" name="new_password" id="new_password" disabled>
-                                        <button type="button" class="toggle-password" onclick="togglePassword()">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                    </div>
-                                    <div class="password-strength">
-                                        <div class="strength-bar" id="strengthBar"></div>
-                                    </div>
-                                    <div class="strength-text" id="strengthText">
-                                        <i class="fas fa-info-circle"></i>
-                                        <span>Minimum 6 characters</span>
-                                    </div>
-                                </div>
-
-                                <div class="form-group">
-                                    <label>Confirm Password <span>*</span></label>
-                                    <div class="input-wrapper">
-                                        <input type="password" name="confirm_password" id="confirm_password" disabled>
-                                    </div>
-                                    <div class="strength-text" id="passwordMatch">
-                                        <i class="fas fa-info-circle"></i>
-                                        <span>Re-enter new password</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="form-actions" style="margin-top: 0; border-top: none; padding-top: 0;">
-                                <button type="submit" name="reset_password" class="btn-warning" id="resetPasswordBtn" disabled>
-                                    <i class="fas fa-key"></i> Reset Password
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
         </div>
     </main>
 

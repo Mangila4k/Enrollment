@@ -25,7 +25,7 @@ if(!isset($_GET['id']) || empty($_GET['id'])) {
 
 $teacher_id = $_GET['id'];
 
-// Get teacher details - PDO version
+// Get teacher details
 $query = "SELECT * FROM users WHERE id = ? AND role = 'Teacher'";
 $stmt = $conn->prepare($query);
 $stmt->execute([$teacher_id]);
@@ -65,19 +65,9 @@ $stmt = $conn->prepare($subjects_query);
 $stmt->execute([$teacher_id]);
 $subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Get recent activities (attendance records from teacher's subjects)
-$activities_query = "
-    SELECT a.*, u.fullname as student_name, sub.subject_name
-    FROM attendance a
-    LEFT JOIN users u ON a.student_id = u.id
-    LEFT JOIN subjects sub ON a.subject_id = sub.id
-    WHERE sub.id IN (SELECT DISTINCT cs.subject_id FROM class_schedules cs WHERE cs.teacher_id = ?)
-    ORDER BY a.date DESC
-    LIMIT 10
-";
-$stmt = $conn->prepare($activities_query);
-$stmt->execute([$teacher_id]);
-$activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
+// REMOVED: attendance query since table doesn't exist yet
+// Get recent activities will be shown once attendance table is created
+$activities = [];
 
 // Calculate statistics
 $total_sections = count($sections);
@@ -132,6 +122,397 @@ if(isset($_GET['delete']) && $_GET['delete'] == $teacher_id) {
     <!-- CSS Files -->
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/view_teacher.css">
+    <style>
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            background: rgba(11, 79, 46, 0.1);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            color: #0B4F2E;
+        }
+        
+        .stat-content {
+            flex: 1;
+        }
+        
+        .stat-number {
+            font-size: 28px;
+            font-weight: 700;
+            color: #333;
+            line-height: 1.2;
+        }
+        
+        .stat-label {
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .profile-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            flex-wrap: wrap;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .profile-avatar-large {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            overflow: hidden;
+            background: linear-gradient(135deg, #0B4F2E, #1a7a42);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .profile-avatar-large img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .profile-avatar-large .avatar-initial {
+            font-size: 48px;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .profile-info {
+            flex: 1;
+        }
+        
+        .profile-info h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .profile-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .profile-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .profile-meta-item i {
+            color: #0B4F2E;
+            width: 18px;
+        }
+        
+        .profile-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            background: linear-gradient(135deg, #0B4F2E, #1a7a42);
+            color: white;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        
+        .action-buttons {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+        }
+        
+        .btn-edit {
+            background: #0B4F2E;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+        
+        .btn-edit:hover {
+            background: #1a7a42;
+            transform: translateY(-2px);
+        }
+        
+        .btn-delete {
+            background: #dc3545;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+        
+        .btn-delete:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+        }
+        
+        .detail-card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .card-header h3 {
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 0;
+            color: #333;
+        }
+        
+        .card-header h3 i {
+            color: #0B4F2E;
+        }
+        
+        .sections-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        
+        .section-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            transition: all 0.3s;
+        }
+        
+        .section-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .section-card h4 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .section-details {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .section-details span {
+            font-size: 13px;
+            color: #666;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .section-stats {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            padding-top: 10px;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .section-stat {
+            text-align: center;
+        }
+        
+        .section-stat .value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #0B4F2E;
+        }
+        
+        .section-stat .label {
+            font-size: 11px;
+            color: #666;
+        }
+        
+        .subjects-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        
+        .subject-tag {
+            background: #e8f4f8;
+            color: #0c5460;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .subject-tag .subject-grade {
+            color: #17a2b8;
+            font-size: 11px;
+        }
+        
+        .view-link {
+            color: #0B4F2E;
+            text-decoration: none;
+            font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .view-link:hover {
+            text-decoration: underline;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .no-data i {
+            font-size: 48px;
+            opacity: 0.3;
+            margin-bottom: 15px;
+        }
+        
+        .alert {
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+        
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .page-header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .page-header p {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .back-btn {
+            background: white;
+            padding: 10px 20px;
+            border-radius: 12px;
+            text-decoration: none;
+            color: #333;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+            border: 1px solid #e0e0e0;
+            transition: all 0.3s;
+        }
+        
+        .back-btn:hover {
+            border-color: #0B4F2E;
+            color: #0B4F2E;
+        }
+        
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .profile-card {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .profile-meta {
+                justify-content: center;
+            }
+            
+            .action-buttons {
+                justify-content: center;
+            }
+            
+            .sections-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .page-header {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
 </head>
 <body>
     <!-- Mobile Menu Toggle -->
@@ -259,7 +640,7 @@ if(isset($_GET['delete']) && $_GET['delete'] == $teacher_id) {
                     <a href="edit_teacher.php?id=<?php echo $teacher_id; ?>" class="btn-edit">
                         <i class="fas fa-edit"></i> Edit Teacher
                     </a>
-                    <a href="?delete=<?php echo $teacher_id; ?>" class="btn-delete" onclick="return confirmDelete()">
+                    <a href="?delete=<?php echo $teacher_id; ?>" class="btn-delete" onclick="return confirm('Are you sure you want to delete this teacher? This action cannot be undone.')">
                         <i class="fas fa-trash"></i> Delete
                     </a>
                 </div>
@@ -355,57 +736,58 @@ if(isset($_GET['delete']) && $_GET['delete'] == $teacher_id) {
             <?php endif; ?>
         </div>
 
-        <!-- Recent Activities -->
+        <!-- Recent Activities (Commented out until attendance table is created) -->
+        <?php if(false): // Temporarily disabled until attendance table exists ?>
         <div class="detail-card">
             <div class="card-header">
                 <h3><i class="fas fa-history"></i> Recent Attendance Activities</h3>
             </div>
-
-            <?php if(!empty($activities)): ?>
-                <div class="table-container">
-                    <table class="activities-table">
-                        <thead>
-                            <tr><th>Date</th><th>Student</th><th>Subject</th><th>Status</th></tr>
-                        </thead>
-                        <tbody>
-                            <?php 
-                            $count = 0;
-                            foreach($activities as $row): 
-                                if($count++ >= 5) break;
-                            ?>
-                                <tr>
-                                    <td><?php echo date('M d, Y', strtotime($row['date'])); ?></td>
-                                    <td><?php echo htmlspecialchars($row['student_name']); ?></div>
-                                    <td><?php echo htmlspecialchars($row['subject_name']); ?></div>
-                                    <td>
-                                        <span class="badge badge-<?php echo strtolower($row['status']); ?>">
-                                            <?php echo $row['status']; ?>
-                                        </span>
-                                     </div>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php else: ?>
-                <div class="no-data" style="padding: 20px;">
-                    <i class="fas fa-calendar-times"></i>
-                    <p>No recent activities found.</p>
-                </div>
-            <?php endif; ?>
+            <div class="no-data" style="padding: 20px;">
+                <i class="fas fa-calendar-times"></i>
+                <p>Attendance module will be available soon.</p>
+            </div>
         </div>
+        <?php endif; ?>
     </main>
 
     <!-- JavaScript -->
-    <script src="js/view_teacher.js"></script>
     <script>
-        // Pass PHP data to JavaScript
-        const teacherData = {
-            id: <?php echo $teacher_id; ?>,
-            name: '<?php echo htmlspecialchars($teacher['fullname']); ?>',
-            email: '<?php echo htmlspecialchars($teacher['email']); ?>',
-            hasProfilePicture: <?php echo ($teacher_profile_picture && file_exists("../" . $teacher_profile_picture)) ? 'true' : 'false'; ?>
-        };
+        // Mobile menu toggle
+        const menuToggle = document.getElementById('menuToggle');
+        const sidebar = document.getElementById('sidebar');
+        
+        if (menuToggle) {
+            menuToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('active');
+            });
+        }
+        
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth <= 768) {
+                if (sidebar && menuToggle) {
+                    if (!sidebar.contains(e.target) && !menuToggle.contains(e.target)) {
+                        sidebar.classList.remove('active');
+                    }
+                }
+            }
+        });
+        
+        // Auto-hide alerts after 5 seconds
+        setTimeout(function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                alert.style.opacity = '0';
+                alert.style.transition = 'opacity 0.3s';
+                setTimeout(() => {
+                    if (alert.parentNode) alert.remove();
+                }, 300);
+            });
+        }, 5000);
+        
+        // Confirm delete function
+        function confirmDelete() {
+            return confirm('Are you sure you want to delete this teacher? This action cannot be undone.');
+        }
     </script>
 </body>
 </html>

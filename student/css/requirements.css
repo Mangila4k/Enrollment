@@ -1,0 +1,793 @@
+/* ========================================
+   REQUIREMENTS PAGE STYLES
+   Author: PLNHS
+   Description: Specific styles for requirements.php
+======================================== */
+
+/* ===== PAGE HEADER ===== */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.page-header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.page-header p {
+    color: #666;
+    font-size: 14px;
+}
+
+.header-actions {
+    display: flex;
+    gap: 15px;
+}
+
+.back-btn {
+    background: white;
+    padding: 10px 20px;
+    border-radius: 12px;
+    text-decoration: none;
+    color: #333;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    border: 1px solid #e0e0e0;
+    transition: all 0.3s;
+}
+
+.back-btn:hover {
+    border-color: #0B4F2E;
+    color: #0B4F2E;
+    transform: translateY(-2px);
+}
+
+/* ===== INFO CARD ===== */
+.info-card {
+    background: linear-gradient(135deg, #0B4F2E, #1a7a42);
+    border-radius: 20px;
+    padding: 25px;
+    margin-bottom: 25px;
+    color: white;
+}
+
+.info-card-content {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.info-icon {
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+}
+
+.info-details {
+    flex: 1;
+}
+
+.info-details h3 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+.info-details p {
+    font-size: 14px;
+    opacity: 0.9;
+    margin: 3px 0;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.status-enrolled {
+    background: rgba(16, 185, 129, 0.2);
+    color: #10b981;
+    border: 1px solid #10b981;
+}
+
+.status-pending {
+    background: rgba(245, 158, 11, 0.2);
+    color: #f59e0b;
+    border: 1px solid #f59e0b;
+}
+
+.status-rejected {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    border: 1px solid #ef4444;
+}
+
+/* ===== PROGRESS CARD ===== */
+.progress-card {
+    background: white;
+    border-radius: 20px;
+    padding: 25px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.progress-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+}
+
+.progress-header h3 i {
+    color: #0B4F2E;
+}
+
+.progress-percentage {
+    font-size: 14px;
+    font-weight: 600;
+    color: #0B4F2E;
+    background: #e8f5e9;
+    padding: 5px 12px;
+    border-radius: 20px;
+}
+
+.progress-container {
+    margin-bottom: 20px;
+}
+
+.progress-bar {
+    height: 10px;
+    background: #e0e0e0;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(135deg, #0B4F2E, #1a7a42);
+    border-radius: 5px;
+    transition: width 0.5s ease;
+}
+
+.progress-stats {
+    display: flex;
+    justify-content: space-around;
+    text-align: center;
+}
+
+.progress-stats .stat {
+    flex: 1;
+}
+
+.progress-stats .stat-value {
+    display: block;
+    font-size: 24px;
+    font-weight: 700;
+    color: #0B4F2E;
+}
+
+.progress-stats .stat-label {
+    font-size: 12px;
+    color: #666;
+}
+
+/* ===== REQUIREMENTS CARD ===== */
+.requirements-card {
+    background: white;
+    border-radius: 20px;
+    padding: 25px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.requirements-card h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.requirements-card h3 i {
+    color: #0B4F2E;
+}
+
+.requirements-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.requirement-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 15px;
+    transition: all 0.3s;
+    border-left: 4px solid;
+}
+
+.requirement-item.submitted {
+    border-left-color: #10b981;
+}
+
+.requirement-item.missing {
+    border-left-color: #dc2626;
+}
+
+.requirement-item:hover {
+    transform: translateX(5px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.requirement-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 22px;
+}
+
+.requirement-icon.submitted {
+    background: #d4edda;
+    color: #10b981;
+}
+
+.requirement-icon.missing {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.requirement-info {
+    flex: 1;
+}
+
+.requirement-name {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.required-badge {
+    background: #dc3545;
+    color: white;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 500;
+}
+
+.optional-badge {
+    background: #6c757d;
+    color: white;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 500;
+}
+
+.requirement-description {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 8px;
+}
+
+.requirement-status {
+    margin-top: 5px;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.submitted-badge {
+    color: #10b981;
+}
+
+.missing-badge {
+    color: #dc2626;
+}
+
+.requirement-actions {
+    flex-shrink: 0;
+}
+
+.btn-view {
+    background: #0B4F2E;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.3s;
+}
+
+.btn-view:hover {
+    background: #1a7a42;
+    transform: translateY(-2px);
+}
+
+/* ===== INSTRUCTIONS CARD ===== */
+.instructions-card {
+    background: white;
+    border-radius: 20px;
+    padding: 25px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.instructions-card h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.instructions-card h3 i {
+    color: #0B4F2E;
+}
+
+.instructions-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.instruction-item {
+    display: flex;
+    gap: 15px;
+    align-items: flex-start;
+}
+
+.instruction-number {
+    width: 35px;
+    height: 35px;
+    background: linear-gradient(135deg, #0B4F2E, #1a7a42);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.instruction-content h4 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.instruction-content p {
+    font-size: 13px;
+    color: #666;
+    line-height: 1.5;
+}
+
+/* ===== CONTACT CARD ===== */
+.contact-card {
+    background: #e8f4f8;
+    border-radius: 20px;
+    padding: 25px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.contact-card i {
+    font-size: 48px;
+    color: #0B4F2E;
+}
+
+.contact-info {
+    flex: 1;
+}
+
+.contact-info h4 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.contact-info p {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 10px;
+}
+
+.contact-details {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.contact-details span {
+    font-size: 13px;
+    color: #0B4F2E;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* ===== NO ENROLLMENT CARD ===== */
+.no-enrollment-card {
+    background: white;
+    border-radius: 20px;
+    padding: 50px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.no-enrollment-card i {
+    font-size: 64px;
+    color: #ccc;
+    margin-bottom: 20px;
+}
+
+.no-enrollment-card h3 {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.no-enrollment-card p {
+    color: #666;
+    margin-bottom: 20px;
+}
+
+.btn-enroll {
+    display: inline-block;
+    background: linear-gradient(135deg, #0B4F2E, #1a7a42);
+    color: white;
+    padding: 12px 30px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.btn-enroll:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(11, 79, 46, 0.3);
+}
+
+/* ===== MODAL STYLES ===== */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 20px;
+    width: 90%;
+    max-width: 500px;
+    animation: modalSlideIn 0.3s ease;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes modalSlideIn {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-header {
+    padding: 20px 25px;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, #0B4F2E, #1a7a42);
+    border-radius: 20px 20px 0 0;
+}
+
+.modal-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    color: white;
+}
+
+.modal-header h3 i {
+    color: #FFD700;
+}
+
+.close-modal {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: white;
+    transition: all 0.3s;
+}
+
+.close-modal:hover {
+    transform: rotate(90deg);
+}
+
+.modal-body {
+    padding: 25px;
+}
+
+.modal-footer {
+    padding: 20px 25px;
+    border-top: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.upload-info {
+    margin-bottom: 20px;
+}
+
+.upload-info p {
+    margin-bottom: 10px;
+}
+
+.file-info {
+    background: #e8f4f8;
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #0c5460;
+    line-height: 1.6;
+}
+
+.file-info i {
+    margin-right: 5px;
+}
+
+.file-input-wrapper {
+    margin: 20px 0;
+    text-align: center;
+}
+
+.file-input-wrapper input[type="file"] {
+    display: none;
+}
+
+.file-input-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: #0B4F2E;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-weight: 500;
+}
+
+.file-input-label:hover {
+    background: #1a7a42;
+    transform: translateY(-2px);
+}
+
+.selected-file {
+    margin-top: 10px;
+    font-size: 13px;
+    color: #666;
+    word-break: break-all;
+}
+
+.upload-progress {
+    margin-top: 15px;
+}
+
+.upload-progress .progress-bar {
+    height: 6px;
+    background: #e0e0e0;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.upload-progress .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(135deg, #0B4F2E, #1a7a42);
+    transition: width 0.3s;
+}
+
+.upload-progress .progress-text {
+    font-size: 12px;
+    color: #666;
+    margin-top: 5px;
+    text-align: center;
+}
+
+.btn-upload {
+    background: #f59e0b;
+    color: white;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.3s;
+}
+
+.btn-upload:hover {
+    background: #d97706;
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background: #f0f0f0;
+    color: #333;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+.btn-secondary:hover {
+    background: #e0e0e0;
+}
+
+.btn-primary {
+    background: #0B4F2E;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.btn-primary:hover {
+    background: #1a7a42;
+    transform: translateY(-2px);
+}
+
+.btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .info-card-content {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .progress-header {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .requirement-item {
+        flex-direction: column;
+    }
+    
+    .requirement-actions {
+        width: 100%;
+    }
+    
+    .btn-view {
+        width: 100%;
+        text-align: center;
+        justify-content: center;
+    }
+    
+    .instructions-list {
+        grid-template-columns: 1fr;
+    }
+    
+    .contact-card {
+        text-align: center;
+        flex-direction: column;
+    }
+    
+    .contact-details {
+        justify-content: center;
+    }
+    
+    .progress-stats {
+        flex-direction: column;
+        gap: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .requirement-name {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .instruction-item {
+        flex-direction: column;
+        text-align: center;
+        align-items: center;
+    }
+}
