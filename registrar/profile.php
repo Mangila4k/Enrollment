@@ -327,7 +327,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
     
-    // Handle password change
+    // Handle password change with strong validation
     if(isset($_POST['change_password'])) {
         $current_password = $_POST['current_password'];
         $new_password = $_POST['new_password'];
@@ -343,10 +343,31 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
         }
         
+        // Strong password validation
         if(empty($new_password)) {
             $errors[] = "New password is required";
-        } elseif(strlen($new_password) < 6) {
-            $errors[] = "New password must be at least 6 characters";
+        } else {
+            $password_errors = [];
+            
+            if(strlen($new_password) < 8) {
+                $password_errors[] = "at least 8 characters";
+            }
+            if(!preg_match('/[A-Z]/', $new_password)) {
+                $password_errors[] = "at least one uppercase letter (A-Z)";
+            }
+            if(!preg_match('/[a-z]/', $new_password)) {
+                $password_errors[] = "at least one lowercase letter (a-z)";
+            }
+            if(!preg_match('/[0-9]/', $new_password)) {
+                $password_errors[] = "at least one number (0-9)";
+            }
+            if(!preg_match('/[!@#$%^&*(),.?":{}|<>]/', $new_password)) {
+                $password_errors[] = "at least one special character (!@#$%^&*)";
+            }
+            
+            if(!empty($password_errors)) {
+                $errors[] = "Password must contain: " . implode(", ", $password_errors);
+            }
         }
         
         if($new_password !== $confirm_password) {
@@ -393,6 +414,62 @@ $sidebar_profile_pic = $_SESSION['user']['profile_picture'] ?? $profile_picture;
     <link rel="stylesheet" href="css/base.css">
     <!-- Profile CSS -->
     <link rel="stylesheet" href="css/profile.css">
+    <style>
+        .password-requirements {
+            margin-top: 8px;
+            padding: 10px;
+            background: #fef2f2;
+            border-radius: 8px;
+            border-left: 4px solid #dc2626;
+            font-size: 12px;
+        }
+        .password-requirements ul {
+            margin-left: 20px;
+            margin-top: 5px;
+            margin-bottom: 0;
+        }
+        .password-requirements li {
+            color: #dc2626;
+            margin: 3px 0;
+        }
+        .password-requirements li.valid {
+            color: #10b981;
+            text-decoration: line-through;
+        }
+        .password-requirements li i {
+            margin-right: 6px;
+            width: 16px;
+        }
+        .password-strength {
+            margin-top: 8px;
+        }
+        .password-strength-bar {
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+        .password-strength-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s, background 0.3s;
+            border-radius: 3px;
+        }
+        .password-strength-text {
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .password-match {
+            font-size: 12px;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+    </style>
 </head>
 <body>
     <!-- Mobile Menu Toggle -->
@@ -660,14 +737,6 @@ $sidebar_profile_pic = $_SESSION['user']['profile_picture'] ?? $profile_picture;
                             <input type="text" name="fullname" value="<?php echo htmlspecialchars($registrar['fullname']); ?>" required>
                         </div>
 
-                        <div class="form-group">
-                            <label>Employee ID</label>
-                            <input type="text" name="id_number" value="<?php echo htmlspecialchars($registrar['id_number'] ?? ''); ?>" placeholder="Enter your employee ID">
-                            <div class="form-hint">
-                                <i class="fas fa-info-circle"></i> Employee ID is optional
-                            </div>
-                        </div>
-
                         <button type="submit" name="update_profile" class="btn-submit">
                             <i class="fas fa-save"></i> Update Profile
                         </button>
@@ -695,12 +764,28 @@ $sidebar_profile_pic = $_SESSION['user']['profile_picture'] ?? $profile_picture;
                                     <div class="form-group">
                                         <label>New Password <span class="required">*</span></label>
                                         <input type="password" name="new_password" id="new_password" disabled>
+                                        
+                                        <!-- Password strength meter -->
                                         <div class="password-strength">
-                                            <div class="password-strength-bar" id="passwordStrength"></div>
+                                            <div class="password-strength-bar">
+                                                <div class="password-strength-fill" id="passwordStrengthFill"></div>
+                                            </div>
+                                            <div class="password-strength-text" id="passwordStrengthText">
+                                                <i class="fas fa-info-circle"></i>
+                                                <span>Enter new password</span>
+                                            </div>
                                         </div>
-                                        <div class="password-strength-text" id="passwordStrengthText">
-                                            <i class="fas fa-info-circle"></i>
-                                            <span>Minimum 6 characters</span>
+                                        
+                                        <!-- Password requirements checklist -->
+                                        <div class="password-requirements" id="passwordRequirements">
+                                            <small><i class="fas fa-shield-alt"></i> Password must contain:</small>
+                                            <ul>
+                                                <li id="req-length"><i class="fas fa-circle"></i> At least 8 characters</li>
+                                                <li id="req-upper"><i class="fas fa-circle"></i> At least 1 uppercase letter (A-Z)</li>
+                                                <li id="req-lower"><i class="fas fa-circle"></i> At least 1 lowercase letter (a-z)</li>
+                                                <li id="req-number"><i class="fas fa-circle"></i> At least 1 number (0-9)</li>
+                                                <li id="req-special"><i class="fas fa-circle"></i> At least 1 special character (!@#$%^&*)</li>
+                                            </ul>
                                         </div>
                                     </div>
 
@@ -848,46 +933,129 @@ $sidebar_profile_pic = $_SESSION['user']['profile_picture'] ?? $profile_picture;
         }
 
         function resetPasswordStrength() {
-            const strengthBar = document.getElementById('passwordStrength');
+            const strengthFill = document.getElementById('passwordStrengthFill');
             const strengthText = document.getElementById('passwordStrengthText');
             const matchText = document.getElementById('passwordMatch');
             
-            if(strengthBar) strengthBar.style.width = '0';
-            if(strengthText) strengthText.innerHTML = '<i class="fas fa-info-circle"></i> Minimum 6 characters';
-            if(matchText) matchText.innerHTML = '<i class="fas fa-info-circle"></i> Re-enter new password';
+            if(strengthFill) strengthFill.style.width = '0%';
+            if(strengthText) strengthText.innerHTML = '<i class="fas fa-info-circle"></i> <span>Enter new password</span>';
+            if(matchText) matchText.innerHTML = '<i class="fas fa-info-circle"></i> <span>Re-enter new password</span>';
+            
+            // Reset requirement list
+            const requirements = ['length', 'upper', 'lower', 'number', 'special'];
+            requirements.forEach(req => {
+                const element = document.getElementById(`req-${req}`);
+                if(element) {
+                    element.classList.remove('valid');
+                    element.innerHTML = '<i class="fas fa-circle"></i> ' + element.innerText.replace(/[✓✔✅]/g, '').trim();
+                }
+            });
         }
 
-        function checkPasswordStrength() {
+        function validatePassword(password) {
+            return {
+                length: password.length >= 8,
+                uppercase: /[A-Z]/.test(password),
+                lowercase: /[a-z]/.test(password),
+                number: /[0-9]/.test(password),
+                special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+            };
+        }
+
+        function updatePasswordStrength() {
             const password = newPassword.value;
-            let strength = 0;
+            const validation = validatePassword(password);
             
-            if (password.length >= 6) strength++;
-            if (password.match(/[a-z]+/)) strength++;
-            if (password.match(/[A-Z]+/)) strength++;
-            if (password.match(/[0-9]+/)) strength++;
-            if (password.match(/[$@#&!]+/)) strength++;
-
-            const strengthBar = document.getElementById('passwordStrength');
-            const strengthText = document.getElementById('passwordStrengthText');
-
-            if (password.length === 0) {
-                strengthBar.style.width = '0';
-                strengthText.innerHTML = '<i class="fas fa-info-circle"></i> Minimum 6 characters';
-                return;
+            // Update requirement list
+            const reqLength = document.getElementById('req-length');
+            const reqUpper = document.getElementById('req-upper');
+            const reqLower = document.getElementById('req-lower');
+            const reqNumber = document.getElementById('req-number');
+            const reqSpecial = document.getElementById('req-special');
+            
+            if(reqLength) {
+                if(validation.length) {
+                    reqLength.classList.add('valid');
+                    reqLength.innerHTML = '<i class="fas fa-check-circle"></i> At least 8 characters';
+                } else {
+                    reqLength.classList.remove('valid');
+                    reqLength.innerHTML = '<i class="fas fa-circle"></i> At least 8 characters';
+                }
             }
-
-            if (strength <= 2) {
-                strengthBar.style.width = '33%';
-                strengthBar.style.backgroundColor = '#ef4444';
-                strengthText.innerHTML = '<i class="fas fa-shield-alt"></i> Weak password';
-            } else if (strength <= 4) {
-                strengthBar.style.width = '66%';
-                strengthBar.style.backgroundColor = '#f59e0b';
-                strengthText.innerHTML = '<i class="fas fa-shield-alt"></i> Medium password';
-            } else {
-                strengthBar.style.width = '100%';
-                strengthBar.style.backgroundColor = '#10b981';
-                strengthText.innerHTML = '<i class="fas fa-shield-alt"></i> Strong password';
+            
+            if(reqUpper) {
+                if(validation.uppercase) {
+                    reqUpper.classList.add('valid');
+                    reqUpper.innerHTML = '<i class="fas fa-check-circle"></i> At least 1 uppercase letter (A-Z)';
+                } else {
+                    reqUpper.classList.remove('valid');
+                    reqUpper.innerHTML = '<i class="fas fa-circle"></i> At least 1 uppercase letter (A-Z)';
+                }
+            }
+            
+            if(reqLower) {
+                if(validation.lowercase) {
+                    reqLower.classList.add('valid');
+                    reqLower.innerHTML = '<i class="fas fa-check-circle"></i> At least 1 lowercase letter (a-z)';
+                } else {
+                    reqLower.classList.remove('valid');
+                    reqLower.innerHTML = '<i class="fas fa-circle"></i> At least 1 lowercase letter (a-z)';
+                }
+            }
+            
+            if(reqNumber) {
+                if(validation.number) {
+                    reqNumber.classList.add('valid');
+                    reqNumber.innerHTML = '<i class="fas fa-check-circle"></i> At least 1 number (0-9)';
+                } else {
+                    reqNumber.classList.remove('valid');
+                    reqNumber.innerHTML = '<i class="fas fa-circle"></i> At least 1 number (0-9)';
+                }
+            }
+            
+            if(reqSpecial) {
+                if(validation.special) {
+                    reqSpecial.classList.add('valid');
+                    reqSpecial.innerHTML = '<i class="fas fa-check-circle"></i> At least 1 special character (!@#$%^&*)';
+                } else {
+                    reqSpecial.classList.remove('valid');
+                    reqSpecial.innerHTML = '<i class="fas fa-circle"></i> At least 1 special character (!@#$%^&*)';
+                }
+            }
+            
+            // Calculate strength percentage
+            const validCount = Object.values(validation).filter(v => v === true).length;
+            const strengthPercent = (validCount / 5) * 100;
+            const strengthFill = document.getElementById('passwordStrengthFill');
+            const strengthText = document.getElementById('passwordStrengthText');
+            
+            if(strengthFill) {
+                strengthFill.style.width = strengthPercent + '%';
+                if(strengthPercent <= 25) {
+                    strengthFill.style.backgroundColor = '#ef4444';
+                    if(strengthText) strengthText.innerHTML = '<i class="fas fa-shield-alt"></i> <span style="color: #ef4444;">Weak password</span>';
+                } else if(strengthPercent <= 50) {
+                    strengthFill.style.backgroundColor = '#f59e0b';
+                    if(strengthText) strengthText.innerHTML = '<i class="fas fa-shield-alt"></i> <span style="color: #f59e0b;">Fair password</span>';
+                } else if(strengthPercent <= 75) {
+                    strengthFill.style.backgroundColor = '#3b82f6';
+                    if(strengthText) strengthText.innerHTML = '<i class="fas fa-shield-alt"></i> <span style="color: #3b82f6;">Good password</span>';
+                } else {
+                    strengthFill.style.backgroundColor = '#10b981';
+                    if(strengthText) strengthText.innerHTML = '<i class="fas fa-shield-alt"></i> <span style="color: #10b981;">Strong password</span>';
+                }
+            }
+            
+            // Check password match
+            checkPasswordMatch();
+            
+            // Enable/disable submit button based on all requirements met
+            const isStrong = Object.values(validation).every(v => v === true);
+            const confirm = confirmPassword.value;
+            const passwordsMatch = (password === confirm);
+            
+            if(changePasswordBtn) {
+                changePasswordBtn.disabled = !(isStrong && passwordsMatch && password.length > 0);
             }
         }
 
@@ -897,16 +1065,23 @@ $sidebar_profile_pic = $_SESSION['user']['profile_picture'] ?? $profile_picture;
             const matchText = document.getElementById('passwordMatch');
 
             if (confirm.length === 0) {
-                matchText.innerHTML = '<i class="fas fa-info-circle"></i> Re-enter new password';
+                matchText.innerHTML = '<i class="fas fa-info-circle"></i> <span>Re-enter new password</span>';
             } else if (password === confirm) {
                 matchText.innerHTML = '<i class="fas fa-check-circle" style="color: #10b981;"></i> <span style="color: #10b981;">Passwords match</span>';
             } else {
                 matchText.innerHTML = '<i class="fas fa-exclamation-circle" style="color: #ef4444;"></i> <span style="color: #ef4444;">Passwords do not match</span>';
             }
+            
+            // Re-check button state
+            if(changePasswordBtn && newPassword.value.length > 0) {
+                const validation = validatePassword(newPassword.value);
+                const isStrong = Object.values(validation).every(v => v === true);
+                changePasswordBtn.disabled = !(isStrong && password === confirm);
+            }
         }
 
         if(newPassword) {
-            newPassword.addEventListener('input', checkPasswordStrength);
+            newPassword.addEventListener('input', updatePasswordStrength);
             newPassword.addEventListener('input', checkPasswordMatch);
         }
         

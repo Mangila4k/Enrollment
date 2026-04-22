@@ -1,7 +1,7 @@
 /* ========================================
    REQUIREMENTS PAGE JAVASCRIPT
    Author: PLNHS
-   Description: JavaScript for requirements.php with upload functionality
+   Description: Enhanced JavaScript for dynamic requirements.php
 ======================================== */
 
 // Mobile menu toggle
@@ -63,8 +63,29 @@ document.addEventListener('DOMContentLoaded', function() {
         if (requirementsData.completionPercentage !== undefined) {
             document.title = `${requirementsData.completionPercentage}% Complete - Requirements | PLSNHS`;
         }
+        
+        // Show student type info in console
+        console.log(`Student Type: ${requirementsData.studentType}`);
+        console.log(`Grade Level: ${requirementsData.gradeLevel}`);
     }
+    
+    // Add tooltips to requirement items
+    addTooltips();
 });
+
+// Add tooltips to requirement items
+function addTooltips() {
+    const requirementItems = document.querySelectorAll('.requirement-item');
+    requirementItems.forEach(item => {
+        const requirementName = item.querySelector('.requirement-name')?.innerText;
+        if (requirementName) {
+            const infoDiv = item.querySelector('.requirement-info');
+            if (infoDiv) {
+                infoDiv.setAttribute('data-tooltip', requirementName);
+            }
+        }
+    });
+}
 
 // ========== UPLOAD MODAL FUNCTIONS ==========
 let currentRequirementKey = '';
@@ -357,6 +378,10 @@ printStyles.textContent = `
         .alert {
             display: none !important;
         }
+        .student-type-badge, .follow-up-badge {
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+        }
     }
 `;
 document.head.appendChild(printStyles);
@@ -430,3 +455,83 @@ const observer = new MutationObserver(function(mutations) {
 });
 
 observer.observe(document.body, { childList: true, subtree: true });
+
+// ========== FILTER REQUIREMENTS BY STATUS ==========
+function filterRequirements(status) {
+    const items = document.querySelectorAll('.requirement-item');
+    items.forEach(item => {
+        if (status === 'all') {
+            item.style.display = 'flex';
+        } else if (status === 'submitted' && item.classList.contains('submitted')) {
+            item.style.display = 'flex';
+        } else if (status === 'missing' && item.classList.contains('missing')) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+    
+    // Update active filter button
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    filterBtns.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.filter === status) {
+            btn.classList.add('active');
+        }
+    });
+}
+
+// Add filter buttons to the page
+document.addEventListener('DOMContentLoaded', function() {
+    const requirementsCard = document.querySelector('.requirements-card');
+    if (requirementsCard && !document.querySelector('.filter-buttons')) {
+        const filterDiv = document.createElement('div');
+        filterDiv.className = 'filter-buttons';
+        filterDiv.innerHTML = `
+            <button class="filter-btn active" data-filter="all" onclick="filterRequirements('all')">All</button>
+            <button class="filter-btn" data-filter="submitted" onclick="filterRequirements('submitted')">Submitted</button>
+            <button class="filter-btn" data-filter="missing" onclick="filterRequirements('missing')">Pending</button>
+        `;
+        
+        const cardHeader = requirementsCard.querySelector('h3');
+        if (cardHeader) {
+            cardHeader.insertAdjacentElement('afterend', filterDiv);
+        }
+        
+        // Add filter button styles
+        const filterStyles = document.createElement('style');
+        filterStyles.textContent = `
+            .filter-buttons {
+                display: flex;
+                gap: 10px;
+                margin-bottom: 20px;
+                padding-bottom: 15px;
+                border-bottom: 1px solid #e0e0e0;
+            }
+            .filter-btn {
+                background: #f0f0f0;
+                border: none;
+                padding: 8px 20px;
+                border-radius: 20px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 500;
+                transition: all 0.3s;
+            }
+            .filter-btn:hover {
+                background: #e0e0e0;
+            }
+            .filter-btn.active {
+                background: #0B4F2E;
+                color: white;
+            }
+        `;
+        document.head.appendChild(filterStyles);
+    }
+});
+
+// Export functions for global use
+window.openUploadModal = openUploadModal;
+window.closeUploadModal = closeUploadModal;
+window.filterRequirements = filterRequirements;
+window.printRequirements = printRequirements;

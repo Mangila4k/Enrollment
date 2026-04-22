@@ -336,22 +336,6 @@
             font-size: 2rem;
         }
 
-        .contact-form {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .contact-form input,
-        .contact-form textarea {
-            padding: 1rem;
-            border: 1px solid #cbd5e1;
-            border-radius: 20px;
-            font-family: inherit;
-            font-size: 1rem;
-        }
-
         .btn-submit {
             background: #0B4F2E;
             color: white;
@@ -565,12 +549,6 @@
                         </div>
                     </div>
                 </div>
-                <form class="contact-form" action="#" method="post">
-                    <input type="text" placeholder="Your Name" required>
-                    <input type="email" placeholder="Your Email" required>
-                    <textarea placeholder="Your Message" rows="4" required></textarea>
-                    <button type="submit" class="btn-submit">Send Message</button>
-                </form>
             </div>
         </div>
     </section>

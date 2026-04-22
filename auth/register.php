@@ -55,10 +55,40 @@ if(isset($_POST['register'])){
         $errors[] = "Invalid email format";
     }
     
+    // Strong password validation
     if(empty($password)) {
         $errors[] = "Password is required";
-    } elseif(strlen($password) < 6) {
-        $errors[] = "Password must be at least 6 characters";
+    } else {
+        $password_errors = [];
+        
+        // Check minimum length
+        if(strlen($password) < 8) {
+            $password_errors[] = "at least 8 characters long";
+        }
+        
+        // Check for uppercase letter
+        if(!preg_match('/[A-Z]/', $password)) {
+            $password_errors[] = "at least one uppercase letter";
+        }
+        
+        // Check for lowercase letter
+        if(!preg_match('/[a-z]/', $password)) {
+            $password_errors[] = "at least one lowercase letter";
+        }
+        
+        // Check for number
+        if(!preg_match('/[0-9]/', $password)) {
+            $password_errors[] = "at least one number";
+        }
+        
+        // Check for special character
+        if(!preg_match('/[!@#$%^&*(),.?":{}|<>]/', $password)) {
+            $password_errors[] = "at least one special character (!@#$%^&* etc.)";
+        }
+        
+        if(!empty($password_errors)) {
+            $errors[] = "Password must contain: " . implode(", ", $password_errors);
+        }
     }
     
     if($password !== $confirm_password) $errors[] = "Passwords do not match";
@@ -133,7 +163,7 @@ if(isset($_POST['register'])){
         .register-container {
             background: white;
             width: 100%;
-            max-width: 700px;
+            max-width: 750px;
             border-radius: 30px;
             padding: 50px 40px;
             box-shadow: 0 25px 50px rgba(0,0,0,0.3);
@@ -164,14 +194,53 @@ if(isset($_POST['register'])){
             border-radius: 12px;
             font-size: 15px;
             background-color: #f8f9fa;
+            transition: all 0.3s;
         }
         .input-wrapper input:focus, .input-wrapper select:focus {
             border-color: #0B4F2E;
             outline: none;
             box-shadow: 0 0 0 4px rgba(11,79,46,0.1);
         }
+        .input-wrapper input.valid { border-color: #10b981; background-color: #f0fdf4; }
+        .input-wrapper input.invalid { border-color: #ef4444; background-color: #fef2f2; }
         .input-icon { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: #666; opacity: 0.5; }
         .toggle-password { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #666; }
+        .password-strength {
+            margin-top: 8px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            background: #f8f9fa;
+        }
+        .strength-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+        }
+        .strength-item i { font-size: 10px; }
+        .strength-item.valid i { color: #10b981; }
+        .strength-item.invalid i { color: #ef4444; }
+        .strength-meter {
+            margin-top: 8px;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .strength-meter-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s, background 0.3s;
+            border-radius: 3px;
+        }
+        .strength-meter-fill.weak { background: #ef4444; width: 25%; }
+        .strength-meter-fill.fair { background: #f59e0b; width: 50%; }
+        .strength-meter-fill.good { background: #3b82f6; width: 75%; }
+        .strength-meter-fill.strong { background: #10b981; width: 100%; }
         .btn-register {
             width: 100%;
             background: linear-gradient(135deg, #0B4F2E, #1a7a42);
@@ -183,11 +252,24 @@ if(isset($_POST['register'])){
             font-weight: 600;
             cursor: pointer;
             margin: 20px 0 15px;
+            transition: all 0.3s;
         }
         .btn-register:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(11,79,46,0.3); }
+        .btn-register:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
         .login-link { text-align: center; margin: 15px 0; }
         .login-link a { color: #0B4F2E; text-decoration: none; font-weight: 600; }
         .info-box { background: #e8f4f8; border-left: 4px solid #17a2b8; padding: 15px; border-radius: 10px; margin: 20px 0; font-size: 13px; color: #0c5460; display: flex; align-items: center; gap: 10px; }
+        .password-requirements {
+            background: #fef2f2;
+            border-left: 4px solid #1eb319ff;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-top: 8px;
+            font-size: 12px;
+        }
+        .password-requirements ul { margin-left: 20px; margin-top: 5px; }
+        .password-requirements li { color: #d63434ff; margin: 3px 0; }
+        .password-requirements li.valid { color: #10b981; text-decoration: line-through; }
         @media (max-width: 600px) {
             .register-container { padding: 30px 20px; }
             .form-row, .form-row-2 { grid-template-columns: 1fr; gap: 0; }
@@ -270,21 +352,38 @@ if(isset($_POST['register'])){
                 </div>
             </div>
 
-            <div class="form-row-2">
-                <div class="form-group">
-                    <label>Password <span>*</span></label>
-                    <div class="input-wrapper">
-                        <input type="password" id="password" name="password" placeholder="Create a password" required>
-                        <button type="button" class="toggle-password" onclick="togglePassword()"><i class="fas fa-eye"></i></button>
-                    </div>
+            <div class="form-group">
+                <label>Password <span>*</span></label>
+                <div class="input-wrapper">
+                    <input type="password" id="password" name="password" placeholder="Create a strong password" required>
+                    <button type="button" class="toggle-password" onclick="togglePassword()"><i class="fas fa-eye"></i></button>
                 </div>
-                <div class="form-group">
-                    <label>Confirm Password <span>*</span></label>
-                    <div class="input-wrapper">
-                        <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm your password" required>
-                        <i class="fas fa-lock input-icon"></i>
-                    </div>
+                
+                <!-- Password strength meter -->
+                <div class="strength-meter">
+                    <div class="strength-meter-fill" id="strengthFill"></div>
                 </div>
+                
+                <!-- Password requirements checklist -->
+                <div class="password-requirements" id="passwordRequirements">
+                    <small><i class="fas fa-shield-alt"></i> Password must contain:</small>
+                    <ul id="requirementsList">
+                        <li id="req-length"><i class="fas fa-circle"></i> At least 8 characters</li>
+                        <li id="req-upper"><i class="fas fa-circle"></i> At least 1 uppercase letter (A-Z)</li>
+                        <li id="req-lower"><i class="fas fa-circle"></i> At least 1 lowercase letter (a-z)</li>
+                        <li id="req-number"><i class="fas fa-circle"></i> At least 1 number (0-9)</li>
+                        <li id="req-special"><i class="fas fa-circle"></i> At least 1 special character (!@#$%^&*)</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Confirm Password <span>*</span></label>
+                <div class="input-wrapper">
+                    <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm your password" required>
+                    <i class="fas fa-lock input-icon"></i>
+                </div>
+                <div id="confirmMatch" style="font-size: 12px; margin-top: 5px;"></div>
             </div>
 
             <div class="info-box">
@@ -299,29 +398,194 @@ if(isset($_POST['register'])){
     </div>
 
     <script>
-        flatpickr("#birthdate", { maxDate: "today", dateFormat: "Y-m-d" });
-        function togglePassword() {
-            const passwordInput = document.getElementById('password');
-            const toggleBtn = document.querySelector('.toggle-password i');
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                toggleBtn.className = 'fas fa-eye-slash';
+    flatpickr("#birthdate", { maxDate: "today", dateFormat: "Y-m-d" });
+    
+    function togglePassword() {
+        const passwordInput = document.getElementById('password');
+        const toggleBtn = document.querySelector('.toggle-password i');
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            toggleBtn.className = 'fas fa-eye-slash';
+        } else {
+            passwordInput.type = 'password';
+            toggleBtn.className = 'fas fa-eye';
+        }
+    }
+    
+    // Password validation functions
+    function validatePassword(password) {
+        return {
+            length: password.length >= 8,
+            uppercase: /[A-Z]/.test(password),
+            lowercase: /[a-z]/.test(password),
+            number: /[0-9]/.test(password),
+            special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
+        };
+    }
+    
+    function updatePasswordStrength() {
+        const password = document.getElementById('password').value;
+        const validation = validatePassword(password);
+        
+        // Update requirement list
+        const reqLength = document.getElementById('req-length');
+        const reqUpper = document.getElementById('req-upper');
+        const reqLower = document.getElementById('req-lower');
+        const reqNumber = document.getElementById('req-number');
+        const reqSpecial = document.getElementById('req-special');
+        
+        // Update length requirement
+        if (reqLength) {
+            if (validation.length) {
+                reqLength.classList.add('valid');
+                reqLength.innerHTML = '<i class="fas fa-check-circle"></i> At least 8 characters';
             } else {
-                passwordInput.type = 'password';
-                toggleBtn.className = 'fas fa-eye';
+                reqLength.classList.remove('valid');
+                reqLength.innerHTML = '<i class="fas fa-circle"></i> At least 8 characters';
             }
         }
-        document.getElementById('registerForm').addEventListener('submit', function(e) {
-            const password = document.getElementById('password').value;
-            const confirm = document.getElementById('confirm_password').value;
-            if (password.length < 6) {
-                e.preventDefault();
-                alert('Password must be at least 6 characters long');
-            } else if (password !== confirm) {
-                e.preventDefault();
-                alert('Passwords do not match!');
+        
+        // Update uppercase requirement
+        if (reqUpper) {
+            if (validation.uppercase) {
+                reqUpper.classList.add('valid');
+                reqUpper.innerHTML = '<i class="fas fa-check-circle"></i> At least 1 uppercase letter (A-Z)';
+            } else {
+                reqUpper.classList.remove('valid');
+                reqUpper.innerHTML = '<i class="fas fa-circle"></i> At least 1 uppercase letter (A-Z)';
             }
-        });
-    </script>
+        }
+        
+        // Update lowercase requirement
+        if (reqLower) {
+            if (validation.lowercase) {
+                reqLower.classList.add('valid');
+                reqLower.innerHTML = '<i class="fas fa-check-circle"></i> At least 1 lowercase letter (a-z)';
+            } else {
+                reqLower.classList.remove('valid');
+                reqLower.innerHTML = '<i class="fas fa-circle"></i> At least 1 lowercase letter (a-z)';
+            }
+        }
+        
+        // Update number requirement
+        if (reqNumber) {
+            if (validation.number) {
+                reqNumber.classList.add('valid');
+                reqNumber.innerHTML = '<i class="fas fa-check-circle"></i> At least 1 number (0-9)';
+            } else {
+                reqNumber.classList.remove('valid');
+                reqNumber.innerHTML = '<i class="fas fa-circle"></i> At least 1 number (0-9)';
+            }
+        }
+        
+        // Update special character requirement
+        if (reqSpecial) {
+            if (validation.special) {
+                reqSpecial.classList.add('valid');
+                reqSpecial.innerHTML = '<i class="fas fa-check-circle"></i> At least 1 special character (!@#$%^&*)';
+            } else {
+                reqSpecial.classList.remove('valid');
+                reqSpecial.innerHTML = '<i class="fas fa-circle"></i> At least 1 special character (!@#$%^&*)';
+            }
+        }
+        
+        // Calculate strength percentage
+        const validCount = Object.values(validation).filter(v => v === true).length;
+        const strengthPercent = (validCount / 5) * 100;
+        const strengthFill = document.getElementById('strengthFill');
+        
+        if (strengthFill) {
+            strengthFill.style.width = strengthPercent + '%';
+            if (strengthPercent <= 25) {
+                strengthFill.className = 'strength-meter-fill weak';
+            } else if (strengthPercent <= 50) {
+                strengthFill.className = 'strength-meter-fill fair';
+            } else if (strengthPercent <= 75) {
+                strengthFill.className = 'strength-meter-fill good';
+            } else {
+                strengthFill.className = 'strength-meter-fill strong';
+            }
+        }
+        
+        // Check if password meets all requirements
+        const isStrong = Object.values(validation).every(v => v === true);
+        
+        // Validate confirm password
+        validateConfirmPassword();
+        
+        return isStrong;
+    }
+    
+    function validateConfirmPassword() {
+        const password = document.getElementById('password').value;
+        const confirm = document.getElementById('confirm_password').value;
+        const confirmMatchDiv = document.getElementById('confirmMatch');
+        const registerBtn = document.getElementById('registerBtn');
+        
+        // Get current password validation
+        const validation = validatePassword(password);
+        const allValid = Object.values(validation).every(v => v === true);
+        
+        if (confirm === '') {
+            confirmMatchDiv.innerHTML = '';
+            confirmMatchDiv.style.color = '';
+            registerBtn.disabled = !allValid;
+        } else if (password === confirm) {
+            confirmMatchDiv.innerHTML = '<i class="fas fa-check-circle" style="color: #10b981;"></i> Passwords match!';
+            confirmMatchDiv.style.color = '#10b981';
+            registerBtn.disabled = !allValid;
+        } else {
+            confirmMatchDiv.innerHTML = '<i class="fas fa-exclamation-circle" style="color: #dc2626;"></i> Passwords do not match!';
+            confirmMatchDiv.style.color = '#dc2626';
+            registerBtn.disabled = true;
+        }
+    }
+    
+    // Real-time password validation
+    const passwordInput = document.getElementById('password');
+    const confirmInput = document.getElementById('confirm_password');
+    
+    if (passwordInput) {
+        passwordInput.addEventListener('input', updatePasswordStrength);
+        // Initial check
+        updatePasswordStrength();
+    }
+    
+    if (confirmInput) {
+        confirmInput.addEventListener('input', validateConfirmPassword);
+    }
+    
+    // Form submission validation
+    document.getElementById('registerForm').addEventListener('submit', function(e) {
+        const password = document.getElementById('password').value;
+        const confirm = document.getElementById('confirm_password').value;
+        const validation = validatePassword(password);
+        const isStrong = Object.values(validation).every(v => v === true);
+        
+        if (!isStrong) {
+            e.preventDefault();
+            alert('Please make sure your password meets all the requirements:\n\n✓ At least 8 characters\n✓ At least 1 uppercase letter (A-Z)\n✓ At least 1 lowercase letter (a-z)\n✓ At least 1 number (0-9)\n✓ At least 1 special character (!@#$%^&*)');
+            return false;
+        }
+        
+        if (password !== confirm) {
+            e.preventDefault();
+            alert('Passwords do not match!');
+            return false;
+        }
+        
+        return true;
+    });
+    
+    // Test function to debug
+    function testPassword() {
+        const testPass = document.getElementById('password').value;
+        console.log('Testing password:', testPass);
+        console.log('Has uppercase:', /[A-Z]/.test(testPass));
+        console.log('Has lowercase:', /[a-z]/.test(testPass));
+        console.log('Has number:', /[0-9]/.test(testPass));
+        console.log('Length:', testPass.length >= 8);
+    }
+</script>
 </body>
 </html>

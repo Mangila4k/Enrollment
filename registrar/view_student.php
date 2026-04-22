@@ -198,11 +198,6 @@ function shouldShowStrand($grade_name) {
                     <a href="edit_student.php?id=<?php echo $student_id; ?>" class="btn-edit">
                         <i class="fas fa-edit"></i> Edit Student
                     </a>
-                    <?php if(!$current_enrollment || $current_enrollment['status'] != 'Enrolled'): ?>
-                        <a href="enroll_student.php?id=<?php echo $student_id; ?>" class="btn-enroll">
-                            <i class="fas fa-user-plus"></i> Enroll Student
-                        </a>
-                    <?php endif; ?>
                 </div>
             </div>
         </div>

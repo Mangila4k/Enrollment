@@ -13,6 +13,50 @@ $admin_id = $_SESSION['user']['id'];
 $success_message = '';
 $error_message = '';
 
+// Function to generate teacher ID number
+function generateTeacherID($conn) {
+    $prefix = "PLSNHS-TCH-";
+    
+    // Get the last teacher ID number
+    $stmt = $conn->prepare("SELECT id_number FROM users WHERE id_number LIKE ? AND role = 'Teacher' ORDER BY id_number DESC LIMIT 1");
+    $stmt->execute([$prefix . '%']);
+    $last_id = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if($last_id && $last_id['id_number']) {
+        // Extract the number part
+        $parts = explode('-', $last_id['id_number']);
+        $last_number = intval(end($parts));
+        $new_number = $last_number + 1;
+    } else {
+        $new_number = 1;
+    }
+    
+    // Format with 6 digits (e.g., 000001)
+    $formatted_number = str_pad($new_number, 6, '0', STR_PAD_LEFT);
+    return $prefix . $formatted_number;
+}
+
+// Function to send notification to all admins and registrars
+function notifyAdmins($conn, $title, $message, $link, $type = 'action', $exclude_user_id = null) {
+    // Get all admin and registrar users
+    $sql = "SELECT id FROM users WHERE role IN ('Admin', 'Registrar')";
+    $params = [];
+    
+    if($exclude_user_id) {
+        $sql .= " AND id != ?";
+        $params[] = $exclude_user_id;
+    }
+    
+    $admin_stmt = $conn->prepare($sql);
+    $admin_stmt->execute($params);
+    $admins = $admin_stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    foreach($admins as $admin) {
+        $add_notif = $conn->prepare("INSERT INTO notifications (user_id, type, title, message, link, created_at, is_read) VALUES (?, ?, ?, ?, ?, NOW(), 0)");
+        $add_notif->execute([$admin['id'], $type, $title, $message, $link]);
+    }
+}
+
 // Get admin profile picture
 $admin_stmt = $conn->prepare("SELECT profile_picture FROM users WHERE id = ?");
 $admin_stmt->execute([$admin_id]);
@@ -25,10 +69,11 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email = trim($_POST['email']);
     $password = $_POST['password'];
     $confirm_password = $_POST['confirm_password'];
-    $id_number = !empty($_POST['id_number']) ? trim($_POST['id_number']) : null;
     $specialization = trim($_POST['specialization']);
     $phone = trim($_POST['phone']);
-    $address = trim($_POST['address']);
+    
+    // Generate ID number automatically
+    $id_number = generateTeacherID($conn);
     
     // Validation
     $errors = [];
@@ -43,10 +88,31 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
         $errors[] = "Invalid email format";
     }
     
+    // Strong password validation
     if(empty($password)) {
         $errors[] = "Password is required";
-    } elseif(strlen($password) < 6) {
-        $errors[] = "Password must be at least 6 characters";
+    } else {
+        $password_errors = [];
+        
+        if(strlen($password) < 8) {
+            $password_errors[] = "at least 8 characters";
+        }
+        if(!preg_match('/[A-Z]/', $password)) {
+            $password_errors[] = "at least one uppercase letter";
+        }
+        if(!preg_match('/[a-z]/', $password)) {
+            $password_errors[] = "at least one lowercase letter";
+        }
+        if(!preg_match('/[0-9]/', $password)) {
+            $password_errors[] = "at least one number";
+        }
+        if(!preg_match('/[!@#$%^&*(),.?":{}|<>]/', $password)) {
+            $password_errors[] = "at least one special character";
+        }
+        
+        if(!empty($password_errors)) {
+            $errors[] = "Password must contain: " . implode(", ", $password_errors);
+        }
     }
     
     if($password !== $confirm_password) {
@@ -63,28 +129,23 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
     
-    // Check if ID number already exists (if provided)
-    if(empty($errors) && $id_number) {
-        $check_id = $conn->prepare("SELECT id FROM users WHERE id_number = ?");
-        $check_id->execute([$id_number]);
-        
-        if($check_id->rowCount() > 0) {
-            $errors[] = "ID number already exists";
-        }
-    }
-    
     // If no errors, insert the teacher
     if(empty($errors)) {
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
         $role = 'Teacher';
         $status = 'approved';
         
-        $insert_query = "INSERT INTO users (id_number, fullname, email, password, role, status, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())";
+        $insert_query = "INSERT INTO users (id_number, fullname, email, password, role, status, phone, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
         $insert_stmt = $conn->prepare($insert_query);
-        $insert_stmt->execute([$id_number, $fullname, $email, $hashed_password, $role, $status]);
         
-        if($insert_stmt->rowCount() > 0) {
-            $_SESSION['success_message'] = "Teacher added successfully!";
+        if($insert_stmt->execute([$id_number, $fullname, $email, $hashed_password, $role, $status, $phone])) {
+            // Send notification to all admins
+            $notif_title = "👨‍🏫 New Teacher Added";
+            $notif_message = "A new teacher account has been created: " . $fullname . " (ID: " . $id_number . ")";
+            $notif_link = "teachers.php";
+            notifyAdmins($conn, $notif_title, $notif_message, $notif_link, 'action', $admin_id);
+            
+            $_SESSION['success_message'] = "Teacher added successfully! ID Number: " . $id_number;
             header("Location: teachers.php");
             exit();
         } else {
@@ -190,6 +251,14 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </div>
             <?php endif; ?>
 
+            <!-- Info Box -->
+            <div class="info-box">
+                <i class="fas fa-info-circle"></i>
+                <div>
+                    <strong>Auto-generated ID Number:</strong> Teacher ID will be automatically generated in format <strong>PLSNHS-TCH-XXXXXX</strong> (e.g., PLSNHS-TCH-000001)
+                </div>
+            </div>
+
             <!-- Form Card -->
             <div class="form-container">
                 <div class="form-card">
@@ -228,7 +297,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                                     <input type="password" 
                                            name="password" 
                                            id="password"
-                                           placeholder="Create a password" 
+                                           placeholder="Create a strong password" 
                                            required>
                                     <button type="button" class="toggle-password" onclick="togglePassword()">
                                         <i class="fas fa-eye"></i>
@@ -239,7 +308,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 </div>
                                 <div class="strength-text" id="strengthText">
                                     <i class="fas fa-info-circle"></i>
-                                    <span>Minimum 6 characters</span>
+                                    <span>Minimum 8 characters with uppercase, lowercase, number & special character</span>
                                 </div>
                             </div>
 
@@ -261,19 +330,6 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label>ID Number</label>
-                                <input type="text" 
-                                       name="id_number" 
-                                       id="id_number"
-                                       placeholder="e.g., TCH-2024-001" 
-                                       value="<?php echo isset($_POST['id_number']) ? htmlspecialchars($_POST['id_number']) : ''; ?>">
-                                <div class="form-hint">
-                                    <i class="fas fa-info-circle"></i>
-                                    Leave blank for auto-generated ID
-                                </div>
-                            </div>
-
-                            <div class="form-group">
                                 <label>Phone Number</label>
                                 <input type="tel" 
                                        name="phone" 
@@ -281,27 +337,19 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                                        placeholder="e.g., 09123456789" 
                                        value="<?php echo isset($_POST['phone']) ? htmlspecialchars($_POST['phone']) : ''; ?>">
                             </div>
-                        </div>
 
-                        <div class="form-group">
-                            <label>Specialization</label>
-                            <input type="text" 
-                                   name="specialization" 
-                                   id="specialization"
-                                   placeholder="e.g., Mathematics, Science, English" 
-                                   value="<?php echo isset($_POST['specialization']) ? htmlspecialchars($_POST['specialization']) : ''; ?>">
-                            <div class="form-hint">
-                                <i class="fas fa-info-circle"></i>
-                                Main subject area or field of expertise
+                            <div class="form-group">
+                                <label>Specialization</label>
+                                <input type="text" 
+                                       name="specialization" 
+                                       id="specialization"
+                                       placeholder="e.g., Mathematics, Science, English" 
+                                       value="<?php echo isset($_POST['specialization']) ? htmlspecialchars($_POST['specialization']) : ''; ?>">
+                                <div class="form-hint">
+                                    <i class="fas fa-info-circle"></i>
+                                    Main subject area or field of expertise
+                                </div>
                             </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Address</label>
-                            <textarea name="address" 
-                                      id="address" 
-                                      rows="3"
-                                      placeholder="Complete address"><?php echo isset($_POST['address']) ? htmlspecialchars($_POST['address']) : ''; ?></textarea>
                         </div>
 
                         <!-- Live Preview -->
@@ -324,6 +372,10 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                                         <i class="fas fa-book"></i>
                                         <?php echo isset($_POST['specialization']) ? htmlspecialchars($_POST['specialization']) : 'Specialization not set'; ?>
                                     </p>
+                                    <p id="previewID">
+                                        <i class="fas fa-id-card"></i>
+                                        Auto-generated ID: PLSNHS-TCH-XXXXXX
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -343,6 +395,10 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
     </div>
 
     <script>
+        // ========================================
+        // ADD TEACHER PAGE JAVASCRIPT
+        // ========================================
+
         // Live preview update
         const fullnameInput = document.getElementById('fullname');
         const emailInput = document.getElementById('email');
@@ -366,21 +422,23 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
             previewSpecialization.innerHTML = `<i class="fas fa-book"></i> ${specialization}`;
         }
 
-        fullnameInput.addEventListener('input', updatePreview);
-        emailInput.addEventListener('input', updatePreview);
-        specializationInput.addEventListener('input', updatePreview);
+        if (fullnameInput) fullnameInput.addEventListener('input', updatePreview);
+        if (emailInput) emailInput.addEventListener('input', updatePreview);
+        if (specializationInput) specializationInput.addEventListener('input', updatePreview);
 
         // Toggle password visibility
         function togglePassword() {
             const passwordInput = document.getElementById('password');
             const toggleBtn = document.querySelector('.toggle-password i');
             
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                toggleBtn.className = 'fas fa-eye-slash';
-            } else {
-                passwordInput.type = 'password';
-                toggleBtn.className = 'fas fa-eye';
+            if (passwordInput && toggleBtn) {
+                if (passwordInput.type === 'password') {
+                    passwordInput.type = 'text';
+                    toggleBtn.className = 'fas fa-eye-slash';
+                } else {
+                    passwordInput.type = 'password';
+                    toggleBtn.className = 'fas fa-eye';
+                }
             }
         }
 
@@ -392,49 +450,53 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
         const passwordMatch = document.getElementById('passwordMatch');
 
         function checkPasswordStrength() {
+            if (!passwordInput) return;
+            
             const password = passwordInput.value;
             let strength = 0;
             let strengthLabel = '';
             let strengthColor = '';
 
-            if (password.length >= 6) strength += 1;
+            if (password.length >= 8) strength += 1;
             if (password.match(/[a-z]+/)) strength += 1;
             if (password.match(/[A-Z]+/)) strength += 1;
             if (password.match(/[0-9]+/)) strength += 1;
-            if (password.match(/[$@#&!]+/)) strength += 1;
+            if (password.match(/[!@#$%^&*(),.?":{}|<>]+/)) strength += 1;
 
             switch(strength) {
                 case 0:
                 case 1:
-                    strengthBar.style.width = '20%';
-                    strengthBar.style.backgroundColor = '#ef4444';
+                    if (strengthBar) strengthBar.style.width = '20%';
+                    if (strengthBar) strengthBar.style.backgroundColor = '#ef4444';
                     strengthLabel = 'Weak';
                     strengthColor = '#ef4444';
                     break;
                 case 2:
                 case 3:
-                    strengthBar.style.width = '60%';
-                    strengthBar.style.backgroundColor = '#f59e0b';
+                    if (strengthBar) strengthBar.style.width = '60%';
+                    if (strengthBar) strengthBar.style.backgroundColor = '#f59e0b';
                     strengthLabel = 'Medium';
                     strengthColor = '#f59e0b';
                     break;
                 case 4:
                 case 5:
-                    strengthBar.style.width = '100%';
-                    strengthBar.style.backgroundColor = '#10b981';
+                    if (strengthBar) strengthBar.style.width = '100%';
+                    if (strengthBar) strengthBar.style.backgroundColor = '#10b981';
                     strengthLabel = 'Strong';
                     strengthColor = '#10b981';
                     break;
             }
 
-            if (password.length > 0) {
+            if (password.length > 0 && strengthText) {
                 strengthText.innerHTML = `<i class="fas fa-shield-alt"></i> <span style="color: ${strengthColor};">Password strength: ${strengthLabel}</span>`;
-            } else {
-                strengthText.innerHTML = `<i class="fas fa-info-circle"></i> <span>Minimum 6 characters</span>`;
+            } else if (strengthText) {
+                strengthText.innerHTML = `<i class="fas fa-info-circle"></i> <span>Minimum 8 characters with uppercase, lowercase, number & special character</span>`;
             }
         }
 
         function checkPasswordMatch() {
+            if (!passwordInput || !confirmInput || !passwordMatch) return;
+            
             const password = passwordInput.value;
             const confirm = confirmInput.value;
 
@@ -449,29 +511,44 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
         }
 
-        passwordInput.addEventListener('input', checkPasswordStrength);
-        passwordInput.addEventListener('input', checkPasswordMatch);
-        confirmInput.addEventListener('input', checkPasswordMatch);
+        if (passwordInput) {
+            passwordInput.addEventListener('input', checkPasswordStrength);
+            passwordInput.addEventListener('input', checkPasswordMatch);
+        }
+        if (confirmInput) confirmInput.addEventListener('input', checkPasswordMatch);
 
         // Form validation
-        document.getElementById('teacherForm').addEventListener('submit', function(e) {
-            const password = passwordInput.value;
-            const confirm = confirmInput.value;
+        const teacherForm = document.getElementById('teacherForm');
+        if (teacherForm) {
+            teacherForm.addEventListener('submit', function(e) {
+                if (!passwordInput || !confirmInput) return;
+                
+                const password = passwordInput.value;
+                const confirm = confirmInput.value;
+                
+                // Check password strength
+                let strength = 0;
+                if (password.length >= 8) strength += 1;
+                if (password.match(/[a-z]+/)) strength += 1;
+                if (password.match(/[A-Z]+/)) strength += 1;
+                if (password.match(/[0-9]+/)) strength += 1;
+                if (password.match(/[!@#$%^&*(),.?":{}|<>]+/)) strength += 1;
 
-            if (password !== confirm) {
-                e.preventDefault();
-                alert('Passwords do not match!');
-                return false;
-            }
-            
-            if (password.length < 6) {
-                e.preventDefault();
-                alert('Password must be at least 6 characters long!');
-                return false;
-            }
-            
-            return true;
-        });
+                if (strength < 4) {
+                    e.preventDefault();
+                    alert('⚠️ Password Requirements:\n\n• At least 8 characters\n• At least 1 uppercase letter (A-Z)\n• At least 1 lowercase letter (a-z)\n• At least 1 number (0-9)\n• At least 1 special character (!@#$%^&*)');
+                    return false;
+                }
+
+                if (password !== confirm) {
+                    e.preventDefault();
+                    alert('❌ Passwords do not match!');
+                    return false;
+                }
+                
+                return true;
+            });
+        }
 
         // Auto-hide alerts after 5 seconds
         setTimeout(function() {

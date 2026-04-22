@@ -531,6 +531,194 @@
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
 }
 
+/* Additional styles for dynamic requirements */
+
+/* Student Type Badge */
+.student-type-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    margin-left: 8px;
+}
+
+.student-type-new {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.student-type-continuing {
+    background: #e8f5e9;
+    color: #388e3c;
+}
+
+.student-type-transferee {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+/* Follow-up Badge */
+.follow-up-badge {
+    background: #ff9800;
+    color: white;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 500;
+}
+
+.student-type-label {
+    font-size: 14px;
+    font-weight: normal;
+    color: #666;
+    margin-left: 10px;
+}
+
+/* Requirement item animations */
+.requirement-item {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.requirement-item.submitted {
+    background: linear-gradient(135deg, #f8f9fa, #e8f5e9);
+}
+
+.requirement-item.missing {
+    background: linear-gradient(135deg, #f8f9fa, #fff3e0);
+}
+
+/* Hover effects for requirement items */
+.requirement-item:hover {
+    transform: translateX(8px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* Enhanced progress bar animation */
+.progress-fill {
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, 
+        rgba(255,255,255,0) 0%,
+        rgba(255,255,255,0.3) 50%,
+        rgba(255,255,255,0) 100%);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+/* Empty state for requirements */
+.requirements-list:empty::after {
+    content: 'No requirements found for your grade level and student type.';
+    display: block;
+    text-align: center;
+    padding: 40px;
+    color: #666;
+    font-style: italic;
+}
+
+/* Loading spinner for requirements */
+.requirements-loading {
+    text-align: center;
+    padding: 40px;
+}
+
+.requirements-loading i {
+    font-size: 32px;
+    color: #0B4F2E;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Tooltip for requirement info */
+.requirement-info {
+    position: relative;
+}
+
+.requirement-info::before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    background: #333;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 10;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+}
+
+.requirement-info:hover::before {
+    opacity: 1;
+}
+
+/* Responsive adjustments for student type badge */
+@media (max-width: 768px) {
+    .student-type-badge {
+        display: inline-block;
+        margin-top: 5px;
+    }
+    
+    .student-type-label {
+        display: block;
+        margin-left: 0;
+        margin-top: 5px;
+    }
+    
+    .follow-up-badge {
+        display: inline-block;
+        margin-top: 5px;
+    }
+    
+    .requirement-name {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+}
+
+/* Print styles for requirements */
+@media print {
+    .student-type-badge,
+    .follow-up-badge {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+    
+    .requirement-item {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+}
+
 @keyframes modalSlideIn {
     from {
         transform: translateY(-50px);

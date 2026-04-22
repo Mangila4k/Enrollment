@@ -59,10 +59,8 @@ if($account['role'] == 'Student') {
     $current_stmt->execute([$account_id]);
     $current_enrollment = $current_stmt->fetch(PDO::FETCH_ASSOC);
     
-    // Get attendance count
-    $attendance_stmt = $conn->prepare("SELECT COUNT(*) as count FROM attendance WHERE student_id = ?");
-    $attendance_stmt->execute([$account_id]);
-    $attendance_count = $attendance_stmt->fetch(PDO::FETCH_ASSOC)['count'];
+    // FIXED: Removed attendance query since table doesn't exist
+    $attendance_count = 0;
     
     $stats = [
         'enrollments' => $enrollment_count,
@@ -254,7 +252,7 @@ $days_active = floor((time() - strtotime($account_created)) / (60 * 60 * 24));
                         <i class="fas fa-edit"></i> Edit Account
                     </a>
                     <?php if($account['id'] != $_SESSION['user']['id']): ?>
-                        <a href="manage_accounts.php?delete=<?php echo $account['id']; ?>" class="btn-delete" onclick="return confirmDelete()">
+                        <a href="manage_accounts.php?delete=<?php echo $account['id']; ?>" class="btn-delete" onclick="return confirm('Are you sure you want to delete this account? This action cannot be undone.')">
                             <i class="fas fa-trash"></i> Delete Account
                         </a>
                     <?php endif; ?>
@@ -294,12 +292,40 @@ $days_active = floor((time() - strtotime($account_created)) / (60 * 60 * 24));
                         <div class="stat-label">Advisory Sections</div>
                     </div>
                 </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-chalkboard-user"></i></div>
+                    <div class="stat-content">
+                        <div class="stat-number"><?php echo $stats['sections_count'] > 0 ? 'Active' : 'No Section'; ?></div>
+                        <div class="stat-label">Teaching Status</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-calendar-alt"></i></div>
+                    <div class="stat-content">
+                        <div class="stat-number"><?php echo date('Y'); ?></div>
+                        <div class="stat-label">Current Year</div>
+                    </div>
+                </div>
             <?php elseif($account['role'] == 'Registrar'): ?>
                 <div class="stat-card">
                     <div class="stat-icon"><i class="fas fa-file-signature"></i></div>
                     <div class="stat-content">
                         <div class="stat-number"><?php echo $stats['processed']; ?></div>
                         <div class="stat-label">Enrollments Processed</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-users"></i></div>
+                    <div class="stat-content">
+                        <div class="stat-number">Active</div>
+                        <div class="stat-label">Account Status</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-calendar-alt"></i></div>
+                    <div class="stat-content">
+                        <div class="stat-number"><?php echo date('Y'); ?></div>
+                        <div class="stat-label">School Year</div>
                     </div>
                 </div>
             <?php elseif($account['role'] == 'Admin'): ?>
@@ -317,6 +343,13 @@ $days_active = floor((time() - strtotime($account_created)) / (60 * 60 * 24));
                         <div class="stat-label">Total Enrollments</div>
                     </div>
                 </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-shield-alt"></i></div>
+                    <div class="stat-content">
+                        <div class="stat-number">System</div>
+                        <div class="stat-label">Administrator</div>
+                    </div>
+                </div>
             <?php endif; ?>
         </div>
 
@@ -329,7 +362,7 @@ $days_active = floor((time() - strtotime($account_created)) / (60 * 60 * 24));
             <div class="info-grid">
                 <div class="info-item">
                     <div class="info-label">Account ID</div>
-                    <div class="info-value"><i class="fas fa-hashtag"></i> <?php echo $account['id']; ?></div>
+                    <div class="info-value"></i> <?php echo $account['id']; ?></div>
                 </div>
                 <div class="info-item">
                     <div class="info-label">Full Name</div>
@@ -350,6 +383,20 @@ $days_active = floor((time() - strtotime($account_created)) / (60 * 60 * 24));
                 <div class="info-item">
                     <div class="info-label">Account Created</div>
                     <div class="info-value"><i class="fas fa-calendar-alt"></i> <?php echo date('F d, Y h:i A', strtotime($account['created_at'])); ?></div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Email Verified</div>
+                    <div class="info-value">
+                        <i class="fas fa-<?php echo $account['email_verified'] ? 'check-circle' : 'times-circle'; ?>" style="color: <?php echo $account['email_verified'] ? '#10b981' : '#ef4444'; ?>"></i>
+                        <?php echo $account['email_verified'] ? 'Verified' : 'Not Verified'; ?>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Account Status</div>
+                    <div class="info-value">
+                        <i class="fas fa-<?php echo $account['status'] == 'approved' ? 'check-circle' : ($account['status'] == 'pending' ? 'clock' : 'times-circle'); ?>" style="color: <?php echo $account['status'] == 'approved' ? '#10b981' : ($account['status'] == 'pending' ? '#f59e0b' : '#ef4444'); ?>"></i>
+                        <?php echo ucfirst($account['status']); ?>
+                    </div>
                 </div>
             </div>
         </div>
@@ -412,21 +459,28 @@ $days_active = floor((time() - strtotime($account_created)) / (60 * 60 * 24));
                         <div class="timeline-time"><i class="far fa-clock"></i> <?php echo date('F d, Y h:i A', strtotime($account['created_at'])); ?></div>
                     </div>
                 </li>
+                <?php if($account['email_verified']): ?>
+                <li class="timeline-item">
+                    <div class="timeline-icon"><i class="fas fa-envelope"></i></div>
+                    <div class="timeline-content">
+                        <div class="timeline-title">Email Verified</div>
+                        <div class="timeline-time"><i class="far fa-clock"></i> Email has been verified</div>
+                    </div>
+                </li>
+                <?php endif; ?>
+                <?php if($account['status'] == 'approved' && $account['approved_at']): ?>
+                <li class="timeline-item">
+                    <div class="timeline-icon"><i class="fas fa-check-circle"></i></div>
+                    <div class="timeline-content">
+                        <div class="timeline-title">Account Approved</div>
+                        <div class="timeline-time"><i class="far fa-clock"></i> <?php echo date('F d, Y h:i A', strtotime($account['approved_at'])); ?></div>
+                    </div>
+                </li>
+                <?php endif; ?>
             </ul>
         </div>
     </main>
 
-    <!-- JavaScript -->
     <script src="js/view_account.js"></script>
-    <script>
-        // Pass PHP data to JavaScript
-        const accountData = {
-            id: <?php echo $account_id; ?>,
-            name: '<?php echo htmlspecialchars($account['fullname']); ?>',
-            email: '<?php echo htmlspecialchars($account['email']); ?>',
-            role: '<?php echo $account['role']; ?>',
-            hasProfilePicture: <?php echo ($account_profile_pic && file_exists("../" . $account_profile_pic)) ? 'true' : 'false'; ?>
-        };
-    </script>
 </body>
 </html>

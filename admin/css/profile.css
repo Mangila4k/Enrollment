@@ -168,6 +168,114 @@
     color: var(--text-dark);
 }
 
+.verified-badge {
+    color: #28a745;
+    font-size: 12px;
+    margin-left: 8px;
+}
+
+.unverified-badge {
+    color: #dc3545;
+    font-size: 12px;
+    margin-left: 8px;
+}
+
+/* Verification Status */
+.verification-status {
+    background: var(--bg-white);
+    border-radius: 20px;
+    padding: 25px;
+    margin-bottom: 25px;
+    box-shadow: var(--shadow);
+}
+
+.verification-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 15px;
+}
+
+.verification-header i {
+    font-size: 24px;
+    color: var(--primary);
+}
+
+.verification-header h3 {
+    font-size: 18px;
+    margin: 0;
+    color: var(--text-dark);
+}
+
+.verification-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 50px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+.verification-badge.verified {
+    background: #d4edda;
+    color: #155724;
+}
+
+.verification-badge.unverified {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.verification-info {
+    color: var(--text-gray);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.btn-verify {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s;
+    margin-top: 15px;
+}
+
+.btn-verify:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+}
+
+.btn-verify i {
+    margin-right: 8px;
+}
+
+.pending-email-alert {
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.pending-email-alert i {
+    color: #856404;
+    margin-right: 10px;
+}
+
+.verify-code-input {
+    font-size: 24px;
+    letter-spacing: 8px;
+    text-align: center;
+    font-family: monospace;
+}
+
 /* Form Card */
 .form-card {
     background: var(--bg-white);
@@ -249,6 +357,11 @@
 .form-group input::placeholder {
     color: var(--text-light);
     font-size: 13px;
+}
+
+.form-group small {
+    display: block;
+    margin-top: 5px;
 }
 
 /* Form Row */
@@ -479,18 +592,6 @@
     display: flex;
     align-items: center;
     gap: 5px;
-}
-
-.strength-weak {
-    color: #ef4444;
-}
-
-.strength-medium {
-    color: #f59e0b;
-}
-
-.strength-strong {
-    color: #10b981;
 }
 
 /* Image Preview Modal */

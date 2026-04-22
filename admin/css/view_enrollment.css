@@ -754,6 +754,66 @@
     margin-bottom: 15px;
 }
 
+/* Requirements Info Banner */
+.requirements-info-banner {
+    display: flex;
+    gap: 20px;
+    padding: 15px;
+    background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+    border-radius: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.info-banner-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    color: #2e7d32;
+}
+
+.info-banner-item i {
+    font-size: 18px;
+}
+
+.info-banner-item strong {
+    font-weight: 700;
+}
+
+/* Requirement Badges */
+.requirement-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: 600;
+    margin-left: 8px;
+}
+
+.badge-required {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.badge-optional {
+    background: #e0f2fe;
+    color: #0284c7;
+}
+
+.badge-follow {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+/* Requirement Status Styling */
+.requirement-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
     .info-grid {

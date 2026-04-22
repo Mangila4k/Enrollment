@@ -261,17 +261,20 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label>ID Number</label>
-                            <input type="text" 
-                                   name="id_number" 
-                                   id="id_number"
-                                   placeholder="e.g., TCH-2024-001" 
-                                   value="<?php echo isset($_POST['id_number']) ? htmlspecialchars($_POST['id_number']) : htmlspecialchars($teacher['id_number'] ?? ''); ?>">
-                            <div class="form-hint">
-                                <i class="fas fa-info-circle"></i>
-                                Leave blank if not applicable
-                            </div>
-                        </div>
+    <label>ID Number</label>
+    <input type="text" 
+           name="id_number" 
+           id="id_number"
+           class="readonly-field"
+           placeholder="e.g., TCH-2024-001" 
+           value="<?php echo isset($_POST['id_number']) ? htmlspecialchars($_POST['id_number']) : htmlspecialchars($teacher['id_number'] ?? ''); ?>"
+           readonly
+           style="background-color: #f5f5f5; cursor: not-allowed;">
+    <div class="form-hint">
+        <i class="fas fa-info-circle"></i>
+        ID number is auto-generated and cannot be changed
+    </div>
+</div>
 
                         <div class="form-group">
                             <label>Phone Number</label>

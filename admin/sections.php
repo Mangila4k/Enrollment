@@ -354,7 +354,6 @@ foreach($grade_levels as $grade) {
                                     <td>
                                         <div class="action-btns">
                                             <button class="action-btn schedule" onclick="openScheduleModal(<?php echo $sec['id']; ?>, '<?php echo htmlspecialchars($sec['section_name']); ?>')" title="Manage Schedule"><i class="fas fa-calendar-alt"></i></button>
-                                            <button class="action-btn edit" onclick="openEditModal(<?php echo $sec['id']; ?>, '<?php echo htmlspecialchars($sec['section_name']); ?>', '<?php echo $sec['grade_name'] ?? ''; ?>', '<?php echo $sec['adviser_id'] ?? ''; ?>')" title="Edit"><i class="fas fa-edit"></i></button>
                                             <a href="?delete=<?php echo $sec['id']; ?>" class="action-btn delete" onclick="return confirm('Delete this section?')" title="Delete"><i class="fas fa-trash"></i></a>
                                         </div>
                                     </td>

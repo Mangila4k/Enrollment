@@ -19,6 +19,26 @@ $admin_stmt->execute([$admin_id]);
 $admin_data = $admin_stmt->fetch(PDO::FETCH_ASSOC);
 $profile_picture = $admin_data['profile_picture'] ?? null;
 
+// Function to send notification to all admins
+function notifyAdmins($conn, $title, $message, $link, $type = 'action', $exclude_user_id = null) {
+    $sql = "SELECT id FROM users WHERE role IN ('Admin', 'Registrar')";
+    $params = [];
+    
+    if($exclude_user_id) {
+        $sql .= " AND id != ?";
+        $params[] = $exclude_user_id;
+    }
+    
+    $admin_stmt = $conn->prepare($sql);
+    $admin_stmt->execute($params);
+    $admins = $admin_stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    foreach($admins as $admin) {
+        $add_notif = $conn->prepare("INSERT INTO notifications (user_id, type, title, message, link, created_at, is_read) VALUES (?, ?, ?, ?, ?, NOW(), 0)");
+        $add_notif->execute([$admin['id'], $type, $title, $message, $link]);
+    }
+}
+
 // Check for session messages
 if(isset($_SESSION['success_message'])) {
     $success_message = $_SESSION['success_message'];
@@ -35,8 +55,20 @@ if(isset($_GET['approve']) && is_numeric($_GET['approve'])) {
     $user_id = $_GET['approve'];
     
     try {
+        // Get user info before approving
+        $user_stmt = $conn->prepare("SELECT fullname, role FROM users WHERE id = ?");
+        $user_stmt->execute([$user_id]);
+        $user_info = $user_stmt->fetch(PDO::FETCH_ASSOC);
+        
         $stmt = $conn->prepare("UPDATE users SET status = 'approved', approved_by = ?, approved_at = NOW() WHERE id = ?");
         $stmt->execute([$admin_id, $user_id]);
+        
+        // Send notification to all admins
+        $notif_title = "✅ User Account Approved";
+        $notif_message = "User " . $user_info['fullname'] . " (" . $user_info['role'] . ") has been approved.";
+        $notif_link = "manage_accounts.php";
+        notifyAdmins($conn, $notif_title, $notif_message, $notif_link, 'action', $admin_id);
+        
         $success_message = "User approved successfully!";
     } catch(PDOException $e) {
         $error_message = "Error approving user: " . $e->getMessage();
@@ -49,8 +81,20 @@ if(isset($_POST['reject_user'])) {
     $reason = $_POST['rejection_reason'];
     
     try {
+        // Get user info before rejecting
+        $user_stmt = $conn->prepare("SELECT fullname, role FROM users WHERE id = ?");
+        $user_stmt->execute([$user_id]);
+        $user_info = $user_stmt->fetch(PDO::FETCH_ASSOC);
+        
         $stmt = $conn->prepare("UPDATE users SET status = 'rejected', rejection_reason = ?, approved_by = ?, approved_at = NOW() WHERE id = ?");
         $stmt->execute([$reason, $admin_id, $user_id]);
+        
+        // Send notification to all admins
+        $notif_title = "❌ User Account Rejected";
+        $notif_message = "User " . $user_info['fullname'] . " (" . $user_info['role'] . ") has been rejected. Reason: " . $reason;
+        $notif_link = "manage_accounts.php";
+        notifyAdmins($conn, $notif_title, $notif_message, $notif_link, 'alert', $admin_id);
+        
         $success_message = "User rejected successfully!";
     } catch(PDOException $e) {
         $error_message = "Error rejecting user: " . $e->getMessage();
@@ -64,25 +108,37 @@ if(isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     // Check if user exists and not deleting self
     if($delete_id != $_SESSION['user']['id']) {
         try {
-            // Check if user has related records
+            // Check if user has related records in enrollments
             $check_enrollments = $conn->prepare("SELECT id FROM enrollments WHERE student_id = ?");
             $check_enrollments->execute([$delete_id]);
             
-            $check_attendance = $conn->prepare("SELECT id FROM attendance WHERE student_id = ?");
-            $check_attendance->execute([$delete_id]);
-            
+            // Check if user is a section adviser
             $check_sections = $conn->prepare("SELECT id FROM sections WHERE adviser_id = ?");
             $check_sections->execute([$delete_id]);
             
+            // Check if user has teacher attendance records
             $check_teacher_attendance = $conn->prepare("SELECT id FROM teacher_attendance WHERE teacher_id = ?");
             $check_teacher_attendance->execute([$delete_id]);
             
-            if($check_enrollments->rowCount() > 0 || $check_attendance->rowCount() > 0 || 
-               $check_sections->rowCount() > 0 || $check_teacher_attendance->rowCount() > 0) {
-                $error_message = "Cannot delete user because they have related records (enrollments, attendance, or sections).";
+            if($check_enrollments->rowCount() > 0 || 
+               $check_sections->rowCount() > 0 || 
+               $check_teacher_attendance->rowCount() > 0) {
+                $error_message = "Cannot delete user because they have related records (enrollments or sections).";
             } else {
+                // Get user info before deleting
+                $user_stmt = $conn->prepare("SELECT fullname, role FROM users WHERE id = ?");
+                $user_stmt->execute([$delete_id]);
+                $user_info = $user_stmt->fetch(PDO::FETCH_ASSOC);
+                
                 $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
                 $stmt->execute([$delete_id]);
+                
+                // Send notification to all admins
+                $notif_title = "🗑️ User Account Deleted";
+                $notif_message = "User " . $user_info['fullname'] . " (" . $user_info['role'] . ") has been deleted from the system.";
+                $notif_link = "manage_accounts.php";
+                notifyAdmins($conn, $notif_title, $notif_message, $notif_link, 'alert', $admin_id);
+                
                 $success_message = "User deleted successfully!";
             }
         } catch(PDOException $e) {
@@ -399,30 +455,30 @@ function getRoleColor($role) {
                                 <tr>
                                     <td>
                                         <span class="id-badge"><?php echo htmlspecialchars($user['id_number'] ?: 'N/A'); ?></span>
-                                    </td>
+                                    </div>
                                     <td>
                                         <strong><?php echo htmlspecialchars($user['fullname']); ?></strong>
-                                    </td>
+                                    </div>
                                     <td>
                                         <?php echo htmlspecialchars($user['email']); ?>
-                                    </td>
+                                    </div>
                                     <td>
                                         <?php $role_color = getRoleColor($user['role']); ?>
                                         <span class="role-badge <?php echo strtolower($user['role']); ?>" style="background: <?php echo $role_color; ?> !important; color: white !important; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-block; text-align: center; min-width: 85px;">
                                             <?php echo $user['role']; ?>
                                         </span>
-                                    </td>
+                                    </div>
                                     <td>
                                         <span class="status-badge status-<?php echo $user['status']; ?>">
                                             <?php echo ucfirst($user['status']); ?>
                                         </span>
-                                    </td>
+                                    </div>
                                     <td>
                                         <span class="activity-time">
                                             <i class="far fa-calendar"></i> 
                                             <?php echo date('M d, Y', strtotime($user['created_at'])); ?>
                                         </span>
-                                    </td>
+                                    </div>
                                     <td>
                                         <div class="action-btns">
                                             <a href="view_account.php?id=<?php echo $user['id']; ?>" class="btn-view" title="View">
@@ -447,7 +503,7 @@ function getRoleColor($role) {
                                                 </a>
                                             <?php endif; ?>
                                         </div>
-                                    </td>
+                                    </div>
                                 </tr>
                                 <?php if(isset($user['rejection_reason']) && $user['rejection_reason']): ?>
                                 <tr class="rejection-row">
@@ -456,7 +512,7 @@ function getRoleColor($role) {
                                             <i class="fas fa-exclamation-triangle"></i> 
                                             <strong>Rejection Reason:</strong> <?php echo htmlspecialchars($user['rejection_reason']); ?>
                                         </div>
-                                    </td>
+                                    </div>
                                 </tr>
                                 <?php endif; ?>
                             <?php endforeach; ?>
@@ -468,7 +524,7 @@ function getRoleColor($role) {
                                         <h3>No Users Found</h3>
                                         <p>No user accounts match your search criteria.</p>
                                     </div>
-                                </td>
+                                 </div>
                             </tr>
                         <?php endif; ?>
                     </tbody>
@@ -499,6 +555,36 @@ function getRoleColor($role) {
     </div>
 
     <!-- JavaScript -->
-<script src="js/accounts.js"></script>
+    <script src="js/accounts.js"></script>
+    <script>
+        function openRejectModal(userId, userName) {
+            document.getElementById('reject_user_id').value = userId;
+            document.getElementById('reject_user_name').textContent = userName;
+            document.getElementById('rejectModal').classList.add('active');
+        }
+        
+        function closeRejectModal() {
+            document.getElementById('rejectModal').classList.remove('active');
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('rejectModal');
+            if (event.target === modal) {
+                closeRejectModal();
+            }
+        }
+        
+        // Auto-hide alerts after 5 seconds
+        setTimeout(function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                alert.style.opacity = '0';
+                setTimeout(() => {
+                    if(alert.parentNode) alert.remove();
+                }, 300);
+            });
+        }, 5000);
+    </script>
 </body>
 </html>

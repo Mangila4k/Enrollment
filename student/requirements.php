@@ -23,59 +23,182 @@ if($student) {
     $profile_picture = $student['profile_picture'] ?? null;
 }
 
-// Get current enrollment
+// Get current enrollment with student type and status
 $enrollment_query = "
-    SELECT e.*, g.grade_name 
+    SELECT e.*, g.grade_name, e.student_type, e.status as enrollment_status
     FROM enrollments e
     JOIN grade_levels g ON e.grade_id = g.id
-    WHERE e.student_id = ? AND e.status = 'Enrolled'
+    WHERE e.student_id = ? 
     ORDER BY e.created_at DESC LIMIT 1
 ";
 $stmt = $conn->prepare($enrollment_query);
 $stmt->execute([$student_id]);
 $enrollment = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// If no active enrollment, get the most recent one
-if(!$enrollment) {
-    $enrollment_query = "
-        SELECT e.*, g.grade_name 
-        FROM enrollments e
-        JOIN grade_levels g ON e.grade_id = g.id
-        WHERE e.student_id = ?
-        ORDER BY e.created_at DESC LIMIT 1
-    ";
-    $stmt = $conn->prepare($enrollment_query);
-    $stmt->execute([$student_id]);
-    $enrollment = $stmt->fetch(PDO::FETCH_ASSOC);
+// Function to check if all required requirements are submitted
+function checkAllRequirementsSubmitted($conn, $enrollment_id, $grade_name, $student_type) {
+    // Get all required requirements for this grade and student type
+    $req_stmt = $conn->prepare("
+        SELECT requirement_name FROM enrollment_requirements 
+        WHERE grade_level = ? AND student_type = ? AND is_required = 1
+    ");
+    $req_stmt->execute([$grade_name, $student_type]);
+    $required_reqs = $req_stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Get enrollment data
+    $enroll_stmt = $conn->prepare("SELECT * FROM enrollments WHERE id = ?");
+    $enroll_stmt->execute([$enrollment_id]);
+    $enrollment_data = $enroll_stmt->fetch(PDO::FETCH_ASSOC);
+    
+    // Map requirement names to database columns
+    $field_map = [
+        'Form 138' => 'form_138',
+        'Certificate of Completion' => 'certificate_of_completion',
+        'PSA Birth Certificate' => 'psa_birth_cert',
+        '2x2 ID Pictures' => 'id_pictures',
+        'Good Moral Certificate' => 'good_moral_cert',
+        'Entrance Exam Result' => 'entrance_exam_result',
+        'Form 137' => 'form_137'
+    ];
+    
+    foreach($required_reqs as $req) {
+        $req_name = $req['requirement_name'];
+        $field_name = null;
+        
+        foreach($field_map as $key => $field) {
+            if(strpos($req_name, $key) !== false) {
+                $field_name = $field;
+                break;
+            }
+        }
+        
+        if($field_name && empty($enrollment_data[$field_name])) {
+            return false;
+        }
+    }
+    
+    return true;
 }
 
-// Define requirements with status
-$requirements = [
-    'form_138' => ['label' => 'Form 138 (Report Card)', 'icon' => 'fa-file-pdf', 'required' => true, 'description' => 'Original or certified true copy of report card from previous school', 'allowed_types' => 'pdf,jpg,jpeg,png', 'max_size' => 5],
-    'good_moral' => ['label' => 'Good Moral Certificate', 'icon' => 'fa-file-alt', 'required' => true, 'description' => 'Certificate of good moral character from previous school', 'allowed_types' => 'pdf,jpg,jpeg,png', 'max_size' => 5],
-    'psa_birth_cert' => ['label' => 'PSA Birth Certificate', 'icon' => 'fa-file-pdf', 'required' => true, 'description' => 'PSA authenticated birth certificate', 'allowed_types' => 'pdf,jpg,jpeg,png', 'max_size' => 5],
-    'medical_cert' => ['label' => 'Medical Certificate', 'icon' => 'fa-notes-medical', 'required' => false, 'description' => 'Medical certificate from a licensed physician', 'allowed_types' => 'pdf,jpg,jpeg,png', 'max_size' => 5],
-    'parent_consent' => ['label' => 'Parent Consent Form', 'icon' => 'fa-file-signature', 'required' => true, 'description' => 'Signed parental consent form for enrollment', 'allowed_types' => 'pdf,jpg,jpeg,png', 'max_size' => 5],
-    'esc_slip' => ['label' => 'ESC Slip', 'icon' => 'fa-file-pdf', 'required' => false, 'description' => 'Educational Service Contracting slip (if applicable)', 'allowed_types' => 'pdf,jpg,jpeg,png', 'max_size' => 5],
-    'transfer_credentials' => ['label' => 'Transfer Credentials', 'icon' => 'fa-exchange-alt', 'required' => false, 'description' => 'Transfer credentials from previous school (for transferees)', 'allowed_types' => 'pdf,jpg,jpeg,png', 'max_size' => 5],
-    'report_card' => ['label' => 'Report Card (Previous Year)', 'icon' => 'fa-file-alt', 'required' => true, 'description' => 'Report card from previous grade level', 'allowed_types' => 'pdf,jpg,jpeg,png', 'max_size' => 5]
-];
-
-// Check which requirement columns exist in the enrollments table
-$existing_requirements = [];
-$check_columns = $conn->query("SHOW COLUMNS FROM enrollments");
-$existing_columns = [];
-while($col = $check_columns->fetch(PDO::FETCH_ASSOC)) {
-    $existing_columns[] = $col['Field'];
+// Function to send notification to all admins and registrars
+function notifyAdmins($conn, $title, $message, $link, $type = 'requirement') {
+    // Get all admin and registrar users
+    $admin_stmt = $conn->prepare("SELECT id FROM users WHERE role IN ('Admin', 'Registrar')");
+    $admin_stmt->execute();
+    $admins = $admin_stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    $success = true;
+    foreach($admins as $admin) {
+        $add_notif = $conn->prepare("INSERT INTO notifications (user_id, type, title, message, link, created_at, is_read) VALUES (?, ?, ?, ?, ?, NOW(), 0)");
+        if(!$add_notif->execute([$admin['id'], $type, $title, $message, $link])) {
+            $success = false;
+        }
+    }
+    return $success;
 }
 
-foreach($requirements as $key => $req) {
-    if(in_array($key, $existing_columns)) {
-        $existing_requirements[$key] = $req;
+// Function to update enrollment status based on submitted requirements
+function updateEnrollmentStatus($conn, $enrollment_id, $grade_name, $student_type) {
+    $all_submitted = checkAllRequirementsSubmitted($conn, $enrollment_id, $grade_name, $student_type);
+    
+    if($all_submitted) {
+        // If all requirements are submitted, set to Pending for admin review
+        $update_stmt = $conn->prepare("UPDATE enrollments SET status = 'Pending' WHERE id = ?");
+        $update_stmt->execute([$enrollment_id]);
+        return 'Pending';
+    } else {
+        // If missing requirements, keep as Draft/Pending Requirements
+        $current_status = $conn->prepare("SELECT status FROM enrollments WHERE id = ?");
+        $current_status->execute([$enrollment_id]);
+        $current = $current_status->fetch(PDO::FETCH_ASSOC);
+        
+        if($current['status'] != 'Rejected') {
+            $update_stmt = $conn->prepare("UPDATE enrollments SET status = 'Pending_Requirements' WHERE id = ?");
+            $update_stmt->execute([$enrollment_id]);
+        }
+        return 'Pending_Requirements';
     }
 }
 
-// ========== HANDLE FILE UPLOAD ==========
+// Get dynamic requirements based on grade level and student type
+$requirements = [];
+if($enrollment) {
+    $grade_name = $enrollment['grade_name'];
+    $student_type = $enrollment['student_type'] ?? 'new';
+    
+    // Fetch requirements from database
+    $req_stmt = $conn->prepare("
+        SELECT * FROM enrollment_requirements 
+        WHERE grade_level = ? AND student_type = ?
+        ORDER BY display_order ASC
+    ");
+    $req_stmt->execute([$grade_name, $student_type]);
+    $db_requirements = $req_stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Map database requirements to display format
+    foreach($db_requirements as $req) {
+        $key = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '_', $req['requirement_name']));
+        
+        $requirements[$key] = [
+            'label' => $req['requirement_name'],
+            'icon' => getIconForRequirement($req['requirement_name']),
+            'required' => (bool)$req['is_required'],
+            'can_be_followed' => (bool)$req['can_be_followed'],
+            'description' => getDescriptionForRequirement($req['requirement_name'], $req['can_be_followed']),
+            'allowed_types' => 'pdf,jpg,jpeg,png',
+            'max_size' => 5
+        ];
+    }
+}
+
+// Helper function to get icon based on requirement name
+function getIconForRequirement($name) {
+    $name_lower = strtolower($name);
+    if(strpos($name_lower, 'form 138') !== false) return 'fa-file-pdf';
+    if(strpos($name_lower, 'form 137') !== false) return 'fa-file-pdf';
+    if(strpos($name_lower, 'certificate') !== false) return 'fa-certificate';
+    if(strpos($name_lower, 'psa') !== false) return 'fa-id-card';
+    if(strpos($name_lower, 'birth') !== false) return 'fa-baby-carriage';
+    if(strpos($name_lower, 'id picture') !== false) return 'fa-camera';
+    if(strpos($name_lower, 'good moral') !== false) return 'fa-hand-peace';
+    if(strpos($name_lower, 'entrance exam') !== false) return 'fa-pen';
+    if(strpos($name_lower, 'interview') !== false) return 'fa-comments';
+    if(strpos($name_lower, 'enrollment form') !== false) return 'fa-file-signature';
+    if(strpos($name_lower, 'shs') !== false) return 'fa-graduation-cap';
+    return 'fa-file-alt';
+}
+
+// Helper function to get description based on requirement name
+function getDescriptionForRequirement($name, $can_be_followed = false) {
+    $name_lower = strtolower($name);
+    if(strpos($name_lower, 'form 138') !== false) {
+        return 'Original or certified true copy of report card from previous school';
+    }
+    if(strpos($name_lower, 'form 137') !== false) {
+        return $can_be_followed ? 'Permanent record (can be submitted later)' : 'Original permanent record from previous school';
+    }
+    if(strpos($name_lower, 'certificate of completion') !== false) {
+        return 'Certificate showing completion of previous grade level';
+    }
+    if(strpos($name_lower, 'psa birth certificate') !== false || strpos($name_lower, 'psa birth') !== false) {
+        return 'PSA authenticated birth certificate (original or certified copy)';
+    }
+    if(strpos($name_lower, '2x2 id') !== false || strpos($name_lower, 'id picture') !== false) {
+        return '2x2 colored ID picture with white background';
+    }
+    if(strpos($name_lower, 'good moral') !== false) {
+        return 'Certificate of good moral character from previous school';
+    }
+    if(strpos($name_lower, 'entrance exam') !== false || strpos($name_lower, 'interview') !== false) {
+        return $can_be_followed ? 'Result of entrance exam/interview (can be submitted later)' : 'Result of entrance exam/interview';
+    }
+    if(strpos($name_lower, 'enrollment form') !== false) {
+        return 'Duly accomplished enrollment form';
+    }
+    return 'Please submit this document as part of your enrollment requirements';
+}
+
+// Handle file upload for dynamic requirements
 if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_requirement'])) {
     $requirement_key = $_POST['requirement_key'];
     $requirement_label = $requirements[$requirement_key]['label'] ?? $requirement_key;
@@ -85,78 +208,112 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_requirement']))
         $filename = $file['name'];
         $file_tmp = $file['tmp_name'];
         $file_size = $file['size'];
-        $file_error = $file['error'];
         
-        // Get file extension
         $file_ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
         $allowed = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp'];
         
-        // Check if requirement exists in existing_requirements
-        if(isset($existing_requirements[$requirement_key])) {
-            $max_size = ($existing_requirements[$requirement_key]['max_size'] ?? 5) * 1024 * 1024; // Convert to bytes
+        if(isset($requirements[$requirement_key])) {
+            $max_size = ($requirements[$requirement_key]['max_size'] ?? 5) * 1024 * 1024;
             
-            // Validate file
             if(!in_array($file_ext, $allowed)) {
                 $error_message = "Invalid file type. Allowed: " . implode(', ', $allowed);
             } elseif($file_size > $max_size) {
-                $error_message = "File too large. Max size: " . ($existing_requirements[$requirement_key]['max_size'] ?? 5) . "MB";
+                $error_message = "File too large. Max size: " . ($requirements[$requirement_key]['max_size'] ?? 5) . "MB";
             } else {
-                // Create upload directory if not exists
                 $upload_dir = "../uploads/requirements/";
                 if(!is_dir($upload_dir)) {
                     mkdir($upload_dir, 0777, true);
                 }
                 
-                // Generate unique filename
                 $new_filename = "req_" . $student_id . "_" . $requirement_key . "_" . time() . "." . $file_ext;
                 $upload_path = $upload_dir . $new_filename;
                 $db_path = "uploads/requirements/" . $new_filename;
                 
-                // Delete old file if exists
-                if(!empty($enrollment[$requirement_key]) && file_exists("../" . $enrollment[$requirement_key])) {
-                    unlink("../" . $enrollment[$requirement_key]);
+                // Find matching column in enrollments table
+                $column_name = null;
+                $check_columns = $conn->query("SHOW COLUMNS FROM enrollments");
+                $field_map_db = [
+                    'form_138' => ['Form 138', 'Report Card'],
+                    'certificate_of_completion' => ['Certificate of Completion'],
+                    'psa_birth_cert' => ['PSA Birth Certificate', 'PSA Birth'],
+                    'id_pictures' => ['2x2 ID Pictures', 'ID Picture'],
+                    'good_moral_cert' => ['Good Moral Certificate', 'Good Moral'],
+                    'entrance_exam_result' => ['Entrance Exam Result'],
+                    'form_137' => ['Form 137']
+                ];
+                
+                foreach($field_map_db as $col => $keywords) {
+                    foreach($keywords as $keyword) {
+                        if(strpos($requirement_label, $keyword) !== false) {
+                            $column_name = $col;
+                            break 2;
+                        }
+                    }
                 }
                 
-                // Upload file
+                if(!$column_name) {
+                    $column_name = 'other_documents';
+                }
+                
+                // Delete old file if exists
+                if(!empty($enrollment[$column_name]) && file_exists("../" . $enrollment[$column_name])) {
+                    unlink("../" . $enrollment[$column_name]);
+                }
+                
                 if(move_uploaded_file($file_tmp, $upload_path)) {
-                    // Update database
-                    $update_stmt = $conn->prepare("UPDATE enrollments SET $requirement_key = ? WHERE id = ?");
+                    $update_stmt = $conn->prepare("UPDATE enrollments SET $column_name = ? WHERE id = ?");
                     if($update_stmt->execute([$db_path, $enrollment['id']])) {
                         $success_message = "✅ " . htmlspecialchars($requirement_label) . " has been uploaded successfully!";
                         
-                        // Add notification for admin
-                        $notif_title = "📄 New Requirement Submitted";
-                        $notif_message = "Student " . $student_name . " has submitted " . $requirement_label . " for enrollment.";
-                        $notif_link = "../admin/view_enrollment.php?id=" . $enrollment['id'];
+                        // Get current submitted count after upload
+                        $current_submitted = 0;
+                        foreach($requirements as $key => $req) {
+                            $col_check = null;
+                            foreach($field_map_db as $col => $keywords) {
+                                foreach($keywords as $keyword) {
+                                    if(strpos($req['label'], $keyword) !== false) {
+                                        $col_check = $col;
+                                        break 2;
+                                    }
+                                }
+                            }
+                            if($col_check && !empty($enrollment[$col_check])) {
+                                $current_submitted++;
+                            }
+                        }
+                        $current_submitted++; // Add current upload
                         
-                        $add_notif = $conn->prepare("INSERT INTO notifications (user_id, type, title, message, link, created_at) VALUES (?, 'update', ?, ?, ?, NOW())");
-                        $add_notif->execute([1, $notif_title, $notif_message, $notif_link]); // user_id 1 is admin
+                        // Check if all requirements are now submitted
+                        $total_req = count($requirements);
+                        $all_submitted_now = ($current_submitted >= $total_req);
+                        
+                        // Send notification to all admins
+                        $enrollment_link = "../admin/view_enrollment.php?id=" . $enrollment['id'];
+                        
+                        if($all_submitted_now) {
+                            // All requirements submitted - send special notification
+                            $notif_title = "✅ All Requirements Completed!";
+                            $notif_message = "Student " . $student_name . " has submitted ALL requirements for " . $enrollment['grade_name'] . " enrollment. Ready for review!";
+                            notifyAdmins($conn, $notif_title, $notif_message, $enrollment_link, 'action');
+                            $success_message .= " All requirements complete! Your enrollment is now pending review.";
+                        } else {
+                            // Individual requirement submitted
+                            $notif_title = "📄 New Requirement Submitted";
+                            $notif_message = "Student " . $student_name . " has submitted " . $requirement_label . " for " . $enrollment['grade_name'] . " enrollment.";
+                            notifyAdmins($conn, $notif_title, $notif_message, $enrollment_link, 'requirement');
+                        }
+                        
+                        // Update enrollment status based on submitted requirements
+                        $new_status = updateEnrollmentStatus($conn, $enrollment['id'], $enrollment['grade_name'], $enrollment['student_type'] ?? 'new');
+                        
+                        if($new_status == 'Pending') {
+                            $success_message .= " Your enrollment is now pending admin approval.";
+                        }
                         
                         // Refresh enrollment data
                         $stmt = $conn->prepare($enrollment_query);
                         $stmt->execute([$student_id]);
                         $enrollment = $stmt->fetch(PDO::FETCH_ASSOC);
-                        
-                        // Refresh requirements status
-                        $requirements_status = [];
-                        foreach($existing_requirements as $key => $req) {
-                            $value = $enrollment[$key] ?? null;
-                            $requirements_status[$key] = [
-                                'label' => $req['label'],
-                                'icon' => $req['icon'],
-                                'submitted' => !empty($value),
-                                'required' => $req['required'],
-                                'description' => $req['description'],
-                                'file' => $value
-                            ];
-                        }
-                        
-                        // Recalculate counts
-                        $submitted_requirements = array_filter($requirements_status, function($req) { return $req['submitted']; });
-                        $missing_requirements = array_filter($requirements_status, function($req) { return !$req['submitted']; });
-                        $submitted_count = count($submitted_requirements);
-                        $missing_count = count($missing_requirements);
-                        $completion_percentage = $total_requirements > 0 ? round(($submitted_count / $total_requirements) * 100) : 0;
                     } else {
                         $error_message = "Failed to update database.";
                     }
@@ -177,19 +334,54 @@ $submitted_requirements = [];
 $missing_requirements = [];
 $requirements_status = [];
 
-foreach($existing_requirements as $key => $req) {
-    $value = $enrollment[$key] ?? null;
+// Get all column names from enrollments table for lookup
+$check_columns = $conn->query("SHOW COLUMNS FROM enrollments");
+$existing_columns = [];
+while($col = $check_columns->fetch(PDO::FETCH_ASSOC)) {
+    $existing_columns[$col['Field']] = true;
+}
+
+foreach($requirements as $key => $req) {
+    // Find matching column
+    $column_name = null;
+    $field_map_check = [
+        'form_138' => ['Form 138', 'Report Card'],
+        'certificate_of_completion' => ['Certificate of Completion'],
+        'psa_birth_cert' => ['PSA Birth Certificate', 'PSA Birth'],
+        'id_pictures' => ['2x2 ID Pictures', 'ID Picture'],
+        'good_moral_cert' => ['Good Moral Certificate', 'Good Moral'],
+        'entrance_exam_result' => ['Entrance Exam Result'],
+        'form_137' => ['Form 137']
+    ];
+    
+    foreach($field_map_check as $col => $keywords) {
+        foreach($keywords as $keyword) {
+            if(strpos($req['label'], $keyword) !== false) {
+                $column_name = $col;
+                break 2;
+            }
+        }
+    }
+    
+    $value = null;
+    if($column_name && isset($enrollment[$column_name])) {
+        $value = $enrollment[$column_name];
+    }
+    
     $is_submitted = !empty($value);
+    
     $requirements_status[$key] = [
         'label' => $req['label'],
         'icon' => $req['icon'],
         'submitted' => $is_submitted,
         'required' => $req['required'],
+        'can_be_followed' => $req['can_be_followed'] ?? false,
         'description' => $req['description'],
         'file' => $value,
         'allowed_types' => $req['allowed_types'],
         'max_size' => $req['max_size']
     ];
+    
     if($is_submitted) {
         $submitted_requirements[$key] = ['label' => $req['label'], 'icon' => $req['icon'], 'file' => $value];
     } else {
@@ -197,32 +389,41 @@ foreach($existing_requirements as $key => $req) {
     }
 }
 
-$total_requirements = count($existing_requirements);
+$total_requirements = count($requirements);
 $submitted_count = count($submitted_requirements);
 $missing_count = count($missing_requirements);
 $completion_percentage = $total_requirements > 0 ? round(($submitted_count / $total_requirements) * 100) : 0;
+
+// Get enrollment status message
+$enrollment_status = $enrollment['enrollment_status'] ?? 'Pending_Requirements';
+$status_message = '';
+$status_class = '';
+
+switch($enrollment_status) {
+    case 'Enrolled':
+        $status_message = 'Your enrollment has been APPROVED! You are now officially enrolled.';
+        $status_class = 'success';
+        break;
+    case 'Pending':
+        $status_message = 'Your requirements are complete and pending admin approval. Please wait for confirmation.';
+        $status_class = 'warning';
+        break;
+    case 'Rejected':
+        $status_message = 'Your enrollment has been rejected. Please contact the registrar\'s office for assistance.';
+        $status_class = 'danger';
+        break;
+    case 'Pending_Requirements':
+    default:
+        $status_message = 'Please submit all required documents to complete your enrollment.';
+        $status_class = 'info';
+        break;
+}
 
 // Get notifications count for badge
 $notif_count = 0;
 $stmt = $conn->prepare("SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = 0");
 $stmt->execute([$student_id]);
 $notif_count = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
-
-// Handle AJAX requests for notifications
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
-    header('Content-Type: application/json');
-    
-    $action = $_POST['action'] ?? '';
-    
-    if ($action === 'get_notifications') {
-        $notifications = getNotifications($conn, $student_id, 20);
-        $unread_count = getUnreadCount($conn, $student_id);
-        echo json_encode(['success' => true, 'notifications' => $notifications, 'unread_count' => $unread_count]);
-        exit();
-    }
-    
-    exit();
-}
 ?>
 
 <!DOCTYPE html>
@@ -231,23 +432,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_X_REQUESTED_WI
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Requirements - Student Portal | PLSNHS</title>
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <!-- Base CSS -->
     <link rel="stylesheet" href="css/base.css">
-    <!-- Requirements CSS -->
     <link rel="stylesheet" href="css/requirements.css">
+    <style>
+        .status-alert {
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.3s ease;
+        }
+        .status-alert.success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #10b981;
+        }
+        .status-alert.warning {
+            background: #fff3e0;
+            color: #856404;
+            border-left: 4px solid #f59e0b;
+        }
+        .status-alert.danger {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+        .status-alert.info {
+            background: #e3f2fd;
+            color: #0c5460;
+            border-left: 4px solid #0B4F2E;
+        }
+        .status-alert i {
+            font-size: 24px;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .btn-upload:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .enrollment-approved-badge {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+    </style>
 </head>
 <body>
-    <!-- Mobile Menu Toggle -->
     <div class="menu-toggle" id="menuToggle">
         <i class="fas fa-bars"></i>
     </div>
 
     <div class="app-container">
-        <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <div class="logo">
@@ -294,7 +542,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_X_REQUESTED_WI
             </div>
         </aside>
 
-        <!-- Main Content -->
         <main class="main-content">
             <div class="page-header">
                 <div>
@@ -305,6 +552,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_X_REQUESTED_WI
                     <a href="dashboard.php" class="back-btn">
                         <i class="fas fa-arrow-left"></i> Back to Dashboard
                     </a>
+                </div>
+            </div>
+
+            <!-- Status Alert -->
+            <div class="status-alert <?php echo $status_class; ?>">
+                <i class="fas fa-<?php echo $status_class == 'success' ? 'check-circle' : ($status_class == 'warning' ? 'clock' : ($status_class == 'danger' ? 'exclamation-triangle' : 'info-circle')); ?>"></i>
+                <div>
+                    <strong><?php echo $status_class == 'success' ? 'Enrollment Approved!' : ($status_class == 'warning' ? 'Pending Approval' : ($status_class == 'danger' ? 'Enrollment Rejected' : 'Requirements Incomplete')); ?></strong><br>
+                    <?php echo $status_message; ?>
                 </div>
             </div>
 
@@ -333,14 +589,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_X_REQUESTED_WI
                         <div class="info-details">
                             <h3><?php echo htmlspecialchars($enrollment['grade_name']); ?></h3>
                             <p>School Year: <?php echo htmlspecialchars($enrollment['school_year']); ?></p>
+                            <p>Student Type: 
+                                <span class="student-type-badge student-type-<?php echo strtolower($enrollment['student_type'] ?? 'new'); ?>">
+                                    <?php echo ucfirst($enrollment['student_type'] ?? 'New Student'); ?>
+                                </span>
+                            </p>
+                            <p>Enrollment Status: 
+                                <span class="status-badge status-<?php echo strtolower($enrollment['enrollment_status']); ?>">
+                                    <?php 
+                                    $status_display = $enrollment['enrollment_status'];
+                                    if($status_display == 'Pending_Requirements') $status_display = 'Pending Requirements';
+                                    echo $status_display;
+                                    ?>
+                                </span>
+                            </p>
                             <?php if(isset($enrollment['strand']) && $enrollment['strand']): ?>
                                 <p>Strand: <?php echo htmlspecialchars($enrollment['strand']); ?></p>
                             <?php endif; ?>
                         </div>
                         <div class="info-status">
-                            <span class="status-badge status-<?php echo strtolower($enrollment['status']); ?>">
-                                <?php echo $enrollment['status']; ?>
-                            </span>
+                            <?php if($enrollment['enrollment_status'] == 'Enrolled'): ?>
+                                <div class="enrollment-approved-badge">
+                                    <i class="fas fa-check-circle"></i> ENROLLED
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -374,7 +646,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_X_REQUESTED_WI
 
                 <!-- Requirements List -->
                 <div class="requirements-card">
-                    <h3><i class="fas fa-list-check"></i> Requirements List</h3>
+                    <h3><i class="fas fa-list-check"></i> Requirements List for <?php echo htmlspecialchars($enrollment['grade_name']); ?> 
+                        <span class="student-type-label">(<?php echo ucfirst($enrollment['student_type'] ?? 'New Student'); ?>)</span>
+                    </h3>
                     <div class="requirements-list">
                         <?php foreach($requirements_status as $key => $req): ?>
                             <div class="requirement-item <?php echo $req['submitted'] ? 'submitted' : 'missing'; ?>" data-key="<?php echo $key; ?>">
@@ -388,6 +662,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_X_REQUESTED_WI
                                             <span class="required-badge">Required</span>
                                         <?php else: ?>
                                             <span class="optional-badge">Optional</span>
+                                        <?php endif; ?>
+                                        <?php if($req['can_be_followed']): ?>
+                                            <span class="follow-up-badge">Can be followed</span>
                                         <?php endif; ?>
                                     </div>
                                     <div class="requirement-description">
@@ -411,9 +688,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_X_REQUESTED_WI
                                             <i class="fas fa-eye"></i> View
                                         </a>
                                     <?php else: ?>
-                                        <button class="btn-upload" onclick="openUploadModal('<?php echo $key; ?>', '<?php echo addslashes($req['label']); ?>', '<?php echo $req['allowed_types']; ?>', <?php echo $req['max_size']; ?>)">
-                                            <i class="fas fa-upload"></i> Upload
-                                        </button>
+                                        <?php if($enrollment['enrollment_status'] != 'Enrolled' && $enrollment['enrollment_status'] != 'Rejected'): ?>
+                                            <button class="btn-upload" onclick="openUploadModal('<?php echo $key; ?>', '<?php echo addslashes($req['label']); ?>', '<?php echo $req['allowed_types']; ?>', <?php echo $req['max_size']; ?>)">
+                                                <i class="fas fa-upload"></i> Upload
+                                            </button>
+                                        <?php else: ?>
+                                            <button class="btn-upload" disabled style="opacity:0.5; cursor:not-allowed;">
+                                                <i class="fas fa-lock"></i> Upload Disabled
+                                            </button>
+                                        <?php endif; ?>
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -450,7 +733,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_X_REQUESTED_WI
                             <div class="instruction-number">4</div>
                             <div class="instruction-content">
                                 <h4>Wait for Verification</h4>
-                                <p>After submission, the registrar will verify your documents within 3-5 business days.</p>
+                                <p>After all requirements are submitted, your enrollment will be reviewed by the registrar within 3-5 business days.</p>
                             </div>
                         </div>
                     </div>
@@ -493,7 +776,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_X_REQUESTED_WI
                 <div class="modal-body">
                     <div class="upload-info">
                         <p>Uploading: <strong id="requirement_label"></strong></p>
-                        <div class="file-info" id="fileInfo">
+                        <div class="file-info">
                             <i class="fas fa-info-circle"></i> Allowed formats: <span id="allowed_types"></span><br>
                             <i class="fas fa-weight-hanging"></i> Max size: <span id="max_size"></span>MB
                         </div>
@@ -529,6 +812,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_X_REQUESTED_WI
             studentId: <?php echo $student_id; ?>,
             studentName: '<?php echo htmlspecialchars($student_name); ?>',
             enrollmentId: <?php echo $enrollment['id'] ?? 0; ?>,
+            gradeLevel: '<?php echo htmlspecialchars($enrollment['grade_name'] ?? ''); ?>',
+            studentType: '<?php echo htmlspecialchars($enrollment['student_type'] ?? 'new'); ?>',
+            enrollmentStatus: '<?php echo $enrollment['enrollment_status'] ?? 'Pending_Requirements'; ?>',
             totalRequirements: <?php echo $total_requirements; ?>,
             submittedCount: <?php echo $submitted_count; ?>,
             missingCount: <?php echo $missing_count; ?>,

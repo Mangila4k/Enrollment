@@ -184,6 +184,25 @@ foreach($grade_counts as $gc) {
     <link rel="stylesheet" href="css/base.css">
     <!-- Subjects Page Specific CSS -->
     <link rel="stylesheet" href="css/subjects.css">
+    <style>
+        /* Additional styles for toggle functionality */
+        .grade-section-header {
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        .toggle-icon {
+            transition: transform 0.3s ease;
+        }
+        .grade-section-header .toggle-icon.rotated {
+            transform: rotate(180deg);
+        }
+        .grade-section-content {
+            transition: all 0.3s ease;
+        }
+        .grade-section-content.collapsed {
+            display: none;
+        }
+    </style>
 </head>
 <body>
     <!-- Mobile Menu Toggle -->
@@ -485,8 +504,115 @@ foreach($grade_counts as $gc) {
     </div>
 
     <!-- JavaScript -->
-    <script src="js/subjects.js"></script>
     <script>
+        // Toggle grade section function - FIXED
+        function toggleGradeSection(element) {
+            const gradeSection = element.closest('.grade-section');
+            const content = gradeSection.querySelector('.grade-section-content');
+            const icon = element.querySelector('.toggle-icon');
+            
+            if (content.classList.contains('collapsed')) {
+                content.classList.remove('collapsed');
+                if (icon) {
+                    icon.classList.remove('rotated');
+                }
+            } else {
+                content.classList.add('collapsed');
+                if (icon) {
+                    icon.classList.add('rotated');
+                }
+            }
+        }
+        
+        // Modal functions
+        function openAddModal() {
+            document.getElementById('addModal').style.display = 'flex';
+        }
+        
+        function closeAddModal() {
+            document.getElementById('addModal').style.display = 'none';
+        }
+        
+        function openEditModal(id, name, gradeId, description) {
+            document.getElementById('edit_subject_id').value = id;
+            document.getElementById('edit_subject_name').value = name;
+            document.getElementById('edit_grade_id').value = gradeId;
+            document.getElementById('edit_description').value = description || '';
+            document.getElementById('editModal').style.display = 'flex';
+        }
+        
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+        
+        function openViewModal(subject) {
+            const viewContent = document.getElementById('viewContent');
+            viewContent.innerHTML = `
+                <div class="view-details">
+                    <div class="view-item"><strong>Subject Name:</strong> ${subject.subject_name}</div>
+                    <div class="view-item"><strong>Grade Level:</strong> ${subject.grade_name}</div>
+                    <div class="view-item"><strong>Description:</strong> ${subject.description || 'No description provided.'}</div>
+                </div>
+            `;
+            document.getElementById('viewModal').style.display = 'flex';
+        }
+        
+        function closeViewModal() {
+            document.getElementById('viewModal').style.display = 'none';
+        }
+        
+        // Mobile menu toggle
+        const menuToggle = document.getElementById('menuToggle');
+        const sidebar = document.getElementById('sidebar');
+        
+        if (menuToggle) {
+            menuToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('active');
+            });
+        }
+        
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth <= 768) {
+                if (sidebar && menuToggle) {
+                    if (!sidebar.contains(e.target) && !menuToggle.contains(e.target)) {
+                        sidebar.classList.remove('active');
+                    }
+                }
+            }
+        });
+        
+        // Auto-hide alerts after 5 seconds
+        setTimeout(function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                alert.style.opacity = '0';
+                alert.style.transition = 'opacity 0.3s';
+                setTimeout(() => {
+                    if (alert.parentNode) alert.remove();
+                }, 300);
+            });
+        }, 5000);
+        
+        // Search input auto-submit
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            let typingTimer;
+            searchInput.addEventListener('keyup', function() {
+                clearTimeout(typingTimer);
+                typingTimer = setTimeout(() => {
+                    document.getElementById('filterForm').submit();
+                }, 500);
+            });
+        }
+        
+        // Grade filter auto-submit
+        const gradeSelect = document.getElementById('gradeSelect');
+        if (gradeSelect) {
+            gradeSelect.addEventListener('change', function() {
+                document.getElementById('filterForm').submit();
+            });
+        }
+        
         // Pass PHP data to JavaScript
         const subjectData = {
             subjects: <?php echo json_encode($subjects); ?>,
@@ -498,6 +624,36 @@ foreach($grade_counts as $gc) {
                 echo json_encode($gradeMap);
             ?>
         };
+        
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            const addModal = document.getElementById('addModal');
+            const editModal = document.getElementById('editModal');
+            const viewModal = document.getElementById('viewModal');
+            
+            if (event.target === addModal) {
+                addModal.style.display = 'none';
+            }
+            if (event.target === editModal) {
+                editModal.style.display = 'none';
+            }
+            if (event.target === viewModal) {
+                viewModal.style.display = 'none';
+            }
+        }
+        
+        // Initialize - keep all sections expanded by default
+        document.addEventListener('DOMContentLoaded', function() {
+            const contents = document.querySelectorAll('.grade-section-content');
+            contents.forEach(content => {
+                content.classList.remove('collapsed');
+            });
+            
+            const icons = document.querySelectorAll('.toggle-icon');
+            icons.forEach(icon => {
+                icon.classList.remove('rotated');
+            });
+        });
     </script>
 </body>
 </html>

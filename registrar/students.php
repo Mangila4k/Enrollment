@@ -483,11 +483,6 @@ $grade_levels = $grade_levels_stmt->fetchAll(PDO::FETCH_ASSOC);
                                     <a href="edit_student.php?id=<?php echo $student['id']; ?>" class="action-btn edit" title="Edit">
                                         <i class="fas fa-edit"></i>
                                     </a>
-                                    <?php if(!$student['enrollment_status'] || $student['enrollment_status'] == 'Rejected'): ?>
-                                        <a href="enroll_student.php?id=<?php echo $student['id']; ?>" class="action-btn enroll" title="Enroll">
-                                            <i class="fas fa-user-plus"></i>
-                                        </a>
-                                    <?php endif; ?>
                                     <a href="?delete=<?php echo $student['id']; ?>" class="action-btn delete" title="Delete" 
                                        onclick="return confirm('Are you sure you want to delete this student? This will also delete all associated records.')">
                                         <i class="fas fa-trash"></i>

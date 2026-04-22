@@ -13,6 +13,51 @@ $admin_id = $_SESSION['user']['id'];
 $error = '';
 $success = '';
 
+// Function to generate student ID number
+function generateStudentID($conn) {
+    $prefix = "PLSNHS-STD-";
+    $current_year = date('Y');
+    
+    // Get the last student ID number for current year
+    $stmt = $conn->prepare("SELECT id_number FROM users WHERE id_number LIKE ? AND role = 'Student' ORDER BY id_number DESC LIMIT 1");
+    $stmt->execute([$prefix . $current_year . '-%']);
+    $last_id = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if($last_id && $last_id['id_number']) {
+        // Extract the number part
+        $parts = explode('-', $last_id['id_number']);
+        $last_number = intval(end($parts));
+        $new_number = $last_number + 1;
+    } else {
+        $new_number = 1;
+    }
+    
+    // Format with 6 digits (e.g., 000001)
+    $formatted_number = str_pad($new_number, 6, '0', STR_PAD_LEFT);
+    return $prefix . $current_year . '-' . $formatted_number;
+}
+
+// Function to send notification to all admins
+function notifyAdmins($conn, $title, $message, $link, $type = 'action', $exclude_user_id = null) {
+    // Get all admin and registrar users
+    $sql = "SELECT id FROM users WHERE role IN ('Admin', 'Registrar')";
+    $params = [];
+    
+    if($exclude_user_id) {
+        $sql .= " AND id != ?";
+        $params[] = $exclude_user_id;
+    }
+    
+    $admin_stmt = $conn->prepare($sql);
+    $admin_stmt->execute($params);
+    $admins = $admin_stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    foreach($admins as $admin) {
+        $add_notif = $conn->prepare("INSERT INTO notifications (user_id, type, title, message, link, created_at, is_read) VALUES (?, ?, ?, ?, ?, NOW(), 0)");
+        $add_notif->execute([$admin['id'], $type, $title, $message, $link]);
+    }
+}
+
 // Get admin profile picture
 $admin_stmt = $conn->prepare("SELECT profile_picture FROM users WHERE id = ?");
 $admin_stmt->execute([$admin_id]);
@@ -26,9 +71,11 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
     $birthdate = $_POST['birthdate'];
     $gender = $_POST['gender'];
     $email = trim($_POST['email']);
-    $id_number = !empty($_POST['id_number']) ? trim($_POST['id_number']) : null;
     $password = $_POST['password'];
     $confirm_password = $_POST['confirm_password'];
+    
+    // Generate ID number automatically
+    $id_number = generateStudentID($conn);
     
     // Combine names for fullname
     $fullname = trim($firstname . ' ' . ($middlename ? $middlename . ' ' : '') . $lastname);
@@ -74,10 +121,31 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
         $errors[] = "Invalid email format";
     }
     
+    // Strong password validation
     if(empty($password)) {
         $errors[] = "Password is required";
-    } elseif(strlen($password) < 6) {
-        $errors[] = "Password must be at least 6 characters";
+    } else {
+        $password_errors = [];
+        
+        if(strlen($password) < 8) {
+            $password_errors[] = "at least 8 characters";
+        }
+        if(!preg_match('/[A-Z]/', $password)) {
+            $password_errors[] = "at least one uppercase letter";
+        }
+        if(!preg_match('/[a-z]/', $password)) {
+            $password_errors[] = "at least one lowercase letter";
+        }
+        if(!preg_match('/[0-9]/', $password)) {
+            $password_errors[] = "at least one number";
+        }
+        if(!preg_match('/[!@#$%^&*(),.?":{}|<>]/', $password)) {
+            $password_errors[] = "at least one special character";
+        }
+        
+        if(!empty($password_errors)) {
+            $errors[] = "Password must contain: " . implode(", ", $password_errors);
+        }
     }
     
     if($password !== $confirm_password) {
@@ -92,41 +160,29 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
             if($check->rowCount() > 0) {
                 $error = "Email already exists";
             } else {
-                if($id_number) {
-                    $check_id = $conn->prepare("SELECT id FROM users WHERE id_number = ?");
-                    $check_id->execute([$id_number]);
-                    
-                    if($check_id->rowCount() > 0) {
-                        $error = "ID number already exists";
-                    }
-                }
+                $conn->beginTransaction();
                 
-                if(empty($error)) {
-                    $conn->beginTransaction();
+                try {
+                    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+                    $role = 'Student';
+                    $status = 'approved';
                     
-                    try {
-                        $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-                        $role = 'Student';
-                        
-                        $check_column = $conn->query("SHOW COLUMNS FROM users LIKE 'is_approved'");
-                        $has_is_approved = $check_column->rowCount() > 0;
-                        
-                        if($has_is_approved) {
-                            $stmt = $conn->prepare("INSERT INTO users (id_number, fullname, email, password, role, is_approved) VALUES (?, ?, ?, ?, ?, ?)");
-                            $stmt->execute([$id_number, $fullname, $email, $hashed_password, $role, 1]);
-                        } else {
-                            $stmt = $conn->prepare("INSERT INTO users (id_number, fullname, email, password, role) VALUES (?, ?, ?, ?, ?)");
-                            $stmt->execute([$id_number, $fullname, $email, $hashed_password, $role]);
-                        }
-                        
-                        $conn->commit();
-                        $success = "Student account created successfully!";
-                        
-                        $_POST = array();
-                    } catch (Exception $e) {
-                        $conn->rollBack();
-                        $error = "Error creating student: " . $e->getMessage();
-                    }
+                    $stmt = $conn->prepare("INSERT INTO users (id_number, firstname, middlename, lastname, fullname, birthdate, gender, email, password, role, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+                    $stmt->execute([$id_number, $firstname, $middlename, $lastname, $fullname, $birthdate, $gender, $email, $hashed_password, $role, $status]);
+                    
+                    $conn->commit();
+                    
+                    // Send notification to all admins
+                    $notif_title = "👨‍🎓 New Student Added";
+                    $notif_message = "A new student account has been created: " . $fullname . " (ID: " . $id_number . ")";
+                    $notif_link = "students.php";
+                    notifyAdmins($conn, $notif_title, $notif_message, $notif_link, 'action', $admin_id);
+                    
+                    $success = "Student account created successfully! ID Number: " . $id_number;
+                    $_POST = array();
+                } catch (Exception $e) {
+                    $conn->rollBack();
+                    $error = "Error creating student: " . $e->getMessage();
                 }
             }
         } catch(PDOException $e) {
@@ -154,6 +210,30 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link rel="stylesheet" href="css/base.css">
     <!-- Add Student CSS -->
     <link rel="stylesheet" href="css/add_student.css">
+    <style>
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #0B4F2E;
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 14px;
+            color: #0c5460;
+        }
+        .info-box i {
+            font-size: 24px;
+            color: #0B4F2E;
+        }
+        .id-preview {
+            background: #f0fdf4;
+            border: 1px solid #10b981;
+            color: #065f46;
+            font-weight: 600;
+        }
+    </style>
     <!-- Flatpickr JS -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 </head>
@@ -240,6 +320,15 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </div>
             <?php endif; ?>
 
+            <!-- Info Box -->
+            <div class="info-box">
+                <i class="fas fa-info-circle"></i>
+                <div>
+                    <strong>Auto-generated ID Number:</strong> Student ID will be automatically generated in format 
+                    <strong>PLSNHS-STD-YYYY-XXXXXX</strong> (e.g., PLSNHS-STD-2026-000001)
+                </div>
+            </div>
+
             <!-- Form -->
             <div class="form-container">
                 <form method="POST" action="" id="registerForm">
@@ -299,12 +388,12 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                         </div>
 
                         <div class="form-group">
-                            <label for="id_number">Student ID (Optional)</label>
-                            <input type="text" id="id_number" name="id_number" placeholder="Enter your student ID (optional)" 
-                                   value="<?php echo isset($_POST['id_number']) ? htmlspecialchars($_POST['id_number']) : ''; ?>">
+                            <label for="id_preview">Student ID (Auto-generated)</label>
+                            <input type="text" id="id_preview" class="id-preview" readonly 
+                                   value="<?php echo isset($id_number) ? $id_number : 'PLSNHS-STD-2026-XXXXXX'; ?>">
                             <div class="form-hint">
                                 <i class="fas fa-info-circle"></i>
-                                Leave blank if you don't have an ID yet
+                                ID will be generated automatically when you create the student
                             </div>
                         </div>
                     </div>
@@ -319,7 +408,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <div class="form-group">
                             <label for="password">Password <span>*</span></label>
                             <div class="input-wrapper">
-                                <input type="password" id="password" name="password" placeholder="Create a password" required>
+                                <input type="password" id="password" name="password" placeholder="Create a strong password" required>
                                 <button type="button" class="toggle-password" onclick="togglePassword()">
                                     <i class="fas fa-eye"></i>
                                 </button>
@@ -329,7 +418,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                             </div>
                             <div class="strength-text" id="strengthText">
                                 <i class="fas fa-info-circle"></i>
-                                <span>Enter password (min. 6 characters)</span>
+                                <span>Minimum 8 characters with uppercase, lowercase, number & special character</span>
                             </div>
                         </div>
 
@@ -373,23 +462,6 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
             });
-
-            // Auto-generate password based on lastname
-            const lastnameInput = document.getElementById('lastname');
-            const passwordInput = document.getElementById('password');
-            
-            if(lastnameInput && passwordInput) {
-                lastnameInput.addEventListener('blur', function() {
-                    if(this.value && !passwordInput.value) {
-                        const lastname = this.value.toLowerCase().trim();
-                        const currentYear = new Date().getFullYear();
-                        const generatedPassword = lastname + currentYear;
-                        passwordInput.value = generatedPassword;
-                        
-                        passwordInput.dispatchEvent(new Event('input'));
-                    }
-                });
-            }
         });
 
         // Calculate age and validate
@@ -448,30 +520,25 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
             
             if (password.length === 0) {
                 strengthBar.style.width = '0';
-                strengthText.innerHTML = '<i class="fas fa-info-circle"></i> <span>Enter password (min. 6 characters)</span>';
+                strengthText.innerHTML = '<i class="fas fa-info-circle"></i> <span>Minimum 8 characters with uppercase, lowercase, number & special character</span>';
                 return;
             }
             
             let strength = 0;
             
-            if (password.length >= 6) strength += 1;
             if (password.length >= 8) strength += 1;
             if (/[a-z]/.test(password)) strength += 1;
             if (/[A-Z]/.test(password)) strength += 1;
             if (/[0-9]/.test(password)) strength += 1;
             if (/[^A-Za-z0-9]/.test(password)) strength += 1;
             
-            if (password.length < 6) {
+            if (strength <= 2) {
                 strengthBar.classList.add('weak');
-                strengthBar.style.width = '33.33%';
-                strengthText.innerHTML = '<i class="fas fa-exclamation-circle"></i> <span style="color: #ef4444;">Too short (min. 6 characters)</span>';
-            } else if (strength <= 3) {
-                strengthBar.classList.add('weak');
-                strengthBar.style.width = '33.33%';
+                strengthBar.style.width = '25%';
                 strengthText.innerHTML = '<i class="fas fa-shield-alt"></i> <span style="color: #ef4444;">Weak password</span>';
-            } else if (strength <= 5) {
+            } else if (strength <= 4) {
                 strengthBar.classList.add('medium');
-                strengthBar.style.width = '66.66%';
+                strengthBar.style.width = '60%';
                 strengthText.innerHTML = '<i class="fas fa-shield-alt"></i> <span style="color: #f59e0b;">Medium password</span>';
             } else {
                 strengthBar.classList.add('strong');
@@ -504,6 +571,14 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
             const lastname = document.getElementById('lastname').value;
             const gender = document.getElementById('gender').value;
             const email = document.getElementById('email').value;
+            
+            // Check password strength
+            let strength = 0;
+            if (password.length >= 8) strength += 1;
+            if (/[a-z]/.test(password)) strength += 1;
+            if (/[A-Z]/.test(password)) strength += 1;
+            if (/[0-9]/.test(password)) strength += 1;
+            if (/[^A-Za-z0-9]/.test(password)) strength += 1;
             
             if (!firstname || !lastname) {
                 e.preventDefault();
@@ -549,9 +624,9 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                 return false;
             }
             
-            if (password.length < 6) {
+            if (strength < 4) {
                 e.preventDefault();
-                alert('Password must be at least 6 characters long');
+                alert('⚠️ Password Requirements:\n\n• At least 8 characters\n• At least 1 uppercase letter (A-Z)\n• At least 1 lowercase letter (a-z)\n• At least 1 number (0-9)\n• At least 1 special character (!@#$%^&*)');
                 return false;
             }
             

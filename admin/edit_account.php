@@ -271,27 +271,6 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                         </div>
                     </div>
 
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Role <span>*</span></label>
-                            <select name="role" id="role" required>
-                                <option value="Admin" <?php echo $account['role'] == 'Admin' ? 'selected' : ''; ?>>Admin</option>
-                                <option value="Registrar" <?php echo $account['role'] == 'Registrar' ? 'selected' : ''; ?>>Registrar</option>
-                                <option value="Teacher" <?php echo $account['role'] == 'Teacher' ? 'selected' : ''; ?>>Teacher</option>
-                                <option value="Student" <?php echo $account['role'] == 'Student' ? 'selected' : ''; ?>>Student</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label>ID Number</label>
-                            <input type="text" name="id_number" id="id_number" value="<?php echo htmlspecialchars($account['id_number'] ?? ''); ?>" placeholder="Enter ID number">
-                            <div class="form-hint">
-                                <i class="fas fa-info-circle"></i>
-                                Leave blank if not applicable
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Live Preview -->
                     <div class="preview-card">
                         <h4><i class="fas fa-eye"></i> Live Preview</h4>

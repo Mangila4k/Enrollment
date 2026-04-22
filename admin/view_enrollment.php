@@ -71,53 +71,90 @@ $total_enrollments_stmt = $conn->prepare("SELECT COUNT(*) as count FROM enrollme
 $total_enrollments_stmt->execute([$student_id]);
 $total_enrollments = $total_enrollments_stmt->fetch(PDO::FETCH_ASSOC)['count'];
 
-// ========== FETCH ALL REQUIREMENTS ==========
-// Define the requirements table structure
-$requirements = [
-    'form_138' => ['label' => 'Form 138 (Report Card)', 'icon' => 'fa-file-pdf', 'color' => '#ef4444'],
-    'good_moral' => ['label' => 'Good Moral Certificate', 'icon' => 'fa-file-alt', 'color' => '#10b981'],
-    'psa_birth_cert' => ['label' => 'PSA Birth Certificate', 'icon' => 'fa-file-pdf', 'color' => '#3b82f6'],
-    'medical_cert' => ['label' => 'Medical Certificate', 'icon' => 'fa-notes-medical', 'color' => '#8b5cf6'],
-    'parent_consent' => ['label' => 'Parent Consent Form', 'icon' => 'fa-file-signature', 'color' => '#f59e0b'],
-    'report_card' => ['label' => 'Report Card (Previous Year)', 'icon' => 'fa-file-alt', 'color' => '#ec4899'],
-    'esc_slip' => ['label' => 'ESC Slip', 'icon' => 'fa-file-pdf', 'color' => '#06b6d4'],
-    'transfer_credentials' => ['label' => 'Transfer Credentials', 'icon' => 'fa-exchange-alt', 'color' => '#14b8a6']
+// ========== FETCH REQUIREMENTS BASED ON GRADE LEVEL AND STUDENT TYPE ==========
+$grade_level = $enrollment['grade_name']; // e.g., "Grade 7", "Grade 8", etc.
+$student_type = $enrollment['student_type']; // 'new', 'continuing', 'transferee'
+
+// Get requirements from enrollment_requirements table
+$requirements_query = "
+    SELECT * FROM enrollment_requirements 
+    WHERE grade_level = ? AND student_type = ?
+    ORDER BY display_order
+";
+$stmt = $conn->prepare($requirements_query);
+$stmt->execute([$grade_level, $student_type]);
+$requirements_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Define requirement field mapping for submitted documents
+$requirement_field_map = [
+    'Form 138' => 'form_138',
+    'Form 138 (Grade 6 Report Card)' => 'form_138',
+    'Form 138 (Previous Grade Report Card)' => 'form_138',
+    'Form 138 (Latest Report Card)' => 'form_138',
+    'Form 138 (Grade 10 Report Card)' => 'form_138',
+    'Form 138 (Grade 11 Report Card)' => 'form_138',
+    'Certificate of Completion' => 'certificate_of_completion',
+    'Certificate of Completion (Elementary)' => 'certificate_of_completion',
+    'Certificate of Completion (Junior High)' => 'certificate_of_completion',
+    'PSA Birth Certificate' => 'psa_birth_cert',
+    '2x2 ID Pictures' => 'id_pictures',
+    'Good Moral Certificate' => 'good_moral_cert',
+    'Medical/Dental Certificate' => 'medical_cert',
+    'Medical Certificate' => 'medical_cert',
+    'Entrance Exam Result' => 'entrance_exam_result',
+    'Entrance Exam / Interview Result' => 'entrance_exam_result',
+    'Entrance Exam / Screening Result' => 'entrance_exam_result',
+    'Form 137' => 'form_137',
+    'Form 137 (Permanent Record - to follow)' => 'form_137',
+    'Form 137 (Permanent Record)' => 'form_137',
+    'SHS Enrollment Form (Track/Strand Selection)' => 'strand_form'
 ];
 
-// Check which requirement columns exist in the enrollments table
-$existing_requirements = [];
-$check_columns = $conn->query("SHOW COLUMNS FROM enrollments");
-$existing_columns = [];
-while($col = $check_columns->fetch(PDO::FETCH_ASSOC)) {
-    $existing_columns[] = $col['Field'];
-}
-
-foreach($requirements as $key => $req) {
-    if(in_array($key, $existing_columns)) {
-        $existing_requirements[$key] = $req;
-    }
-}
-
-// Get requirement values for this enrollment
+// Process requirements - separate submitted and missing
 $submitted_requirements = [];
 $missing_requirements = [];
 
-foreach($existing_requirements as $key => $req) {
-    $value = $enrollment[$key] ?? null;
-    if(!empty($value)) {
-        $submitted_requirements[$key] = [
-            'label' => $req['label'],
-            'icon' => $req['icon'],
-            'color' => $req['color'],
-            'file' => $value
-        ];
+foreach($requirements_list as $req) {
+    $req_name = $req['requirement_name'];
+    $field_name = null;
+    
+    // Find matching field for this requirement
+    foreach($requirement_field_map as $key => $field) {
+        if(strpos($req_name, $key) !== false || $key == $req_name) {
+            $field_name = $field;
+            break;
+        }
+    }
+    
+    // Check if requirement is submitted
+    $is_submitted = false;
+    $file_path = null;
+    
+    if($field_name && !empty($enrollment[$field_name])) {
+        $is_submitted = true;
+        $file_path = $enrollment[$field_name];
+    }
+    
+    $requirement_data = [
+        'id' => $req['id'],
+        'name' => $req_name,
+        'is_required' => $req['is_required'],
+        'can_be_followed' => $req['can_be_followed'],
+        'display_order' => $req['display_order'],
+        'field_name' => $field_name,
+        'is_submitted' => $is_submitted,
+        'file_path' => $file_path
+    ];
+    
+    if($is_submitted) {
+        $submitted_requirements[] = $requirement_data;
     } else {
-        $missing_requirements[$key] = $req;
+        $missing_requirements[] = $requirement_data;
     }
 }
 
 // Calculate completion percentage
-$total_requirements = count($existing_requirements);
+$total_requirements = count($requirements_list);
 $submitted_count = count($submitted_requirements);
 $completion_percentage = $total_requirements > 0 ? round(($submitted_count / $total_requirements) * 100) : 0;
 ?>
@@ -272,6 +309,13 @@ $completion_percentage = $total_requirements > 0 ? round(($submitted_count / $to
 
             <div class="info-grid">
                 <div class="info-item">
+                    <div class="info-label">Student Type</div>
+                    <div class="info-value">
+                        <i class="fas fa-user-tag"></i>
+                        <?php echo ucfirst($enrollment['student_type']); ?>
+                    </div>
+                </div>
+                <div class="info-item">
                     <div class="info-label">Grade Level</div>
                     <div class="info-value">
                         <i class="fas fa-layer-group"></i>
@@ -313,10 +357,22 @@ $completion_percentage = $total_requirements > 0 ? round(($submitted_count / $to
         <!-- ========== REQUIREMENTS SECTION ========== -->
         <div class="detail-card requirements-card">
             <div class="card-header">
-                <h3><i class="fas fa-file-alt"></i> Submitted Requirements</h3>
+                <h3><i class="fas fa-file-alt"></i> Enrollment Requirements</h3>
                 <div class="completion-badge">
                     <i class="fas fa-check-circle"></i>
                     <span><?php echo $submitted_count; ?>/<?php echo $total_requirements; ?> Requirements</span>
+                </div>
+            </div>
+
+            <!-- Grade & Student Type Info -->
+            <div class="requirements-info-banner">
+                <div class="info-banner-item">
+                    <i class="fas fa-layer-group"></i>
+                    <span>Grade Level: <strong><?php echo htmlspecialchars($grade_level); ?></strong></span>
+                </div>
+                <div class="info-banner-item">
+                    <i class="fas fa-user-tag"></i>
+                    <span>Student Type: <strong><?php echo ucfirst($student_type); ?></strong></span>
                 </div>
             </div>
 
@@ -336,32 +392,34 @@ $completion_percentage = $total_requirements > 0 ? round(($submitted_count / $to
                 <div class="requirements-grid submitted-grid">
                     <h4><i class="fas fa-check-circle" style="color: #10b981;"></i> Submitted Requirements</h4>
                     <div class="requirements-list">
-                        <?php foreach($submitted_requirements as $key => $req): ?>
-                            <div class="requirement-item submitted" data-key="<?php echo $key; ?>">
-                                <div class="requirement-icon" style="background: <?php echo $req['color']; ?>20;">
-                                    <i class="fas <?php echo $req['icon']; ?>" style="color: <?php echo $req['color']; ?>;"></i>
+                        <?php foreach($submitted_requirements as $req): ?>
+                            <div class="requirement-item submitted" data-key="<?php echo $req['id']; ?>">
+                                <div class="requirement-icon" style="background: #10b98120;">
+                                    <i class="fas fa-check-circle" style="color: #10b981;"></i>
                                 </div>
                                 <div class="requirement-info">
-                                    <div class="requirement-name"><?php echo $req['label']; ?></div>
+                                    <div class="requirement-name"><?php echo htmlspecialchars($req['name']); ?></div>
                                     <div class="requirement-status">
                                         <span class="status-badge-submitted">
                                             <i class="fas fa-check-circle"></i> Submitted
                                         </span>
+                                        <?php if($req['is_required']): ?>
+                                            <span class="requirement-badge badge-required">Required</span>
+                                        <?php else: ?>
+                                            <span class="requirement-badge badge-optional">Optional</span>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
-                                <div class="requirement-actions">
-                                    <a href="../<?php echo $req['file']; ?>" target="_blank" class="btn-view-file">
-                                        <i class="fas fa-eye"></i> View
-                                    </a>
-                                </div>
+                                <?php if($req['file_path']): ?>
+                                    <div class="requirement-actions">
+                                        <a href="../<?php echo $req['file_path']; ?>" target="_blank" class="btn-view-file">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         <?php endforeach; ?>
                     </div>
-                </div>
-            <?php else: ?>
-                <div class="no-requirements">
-                    <i class="fas fa-file-alt"></i>
-                    <p>No requirements have been submitted yet.</p>
                 </div>
             <?php endif; ?>
 
@@ -370,27 +428,43 @@ $completion_percentage = $total_requirements > 0 ? round(($submitted_count / $to
                 <div class="requirements-grid missing-grid">
                     <h4><i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i> Missing Requirements</h4>
                     <div class="requirements-list">
-                        <?php foreach($missing_requirements as $key => $req): ?>
-                            <div class="requirement-item missing" data-key="<?php echo $key; ?>">
+                        <?php foreach($missing_requirements as $req): ?>
+                            <div class="requirement-item missing" data-key="<?php echo $req['id']; ?>">
                                 <div class="requirement-icon" style="background: #fee2e2;">
-                                    <i class="fas <?php echo $req['icon']; ?>" style="color: #dc2626;"></i>
+                                    <i class="fas fa-times-circle" style="color: #dc2626;"></i>
                                 </div>
                                 <div class="requirement-info">
-                                    <div class="requirement-name"><?php echo $req['label']; ?></div>
+                                    <div class="requirement-name"><?php echo htmlspecialchars($req['name']); ?></div>
                                     <div class="requirement-status">
                                         <span class="status-badge-missing">
                                             <i class="fas fa-times-circle"></i> Not Submitted
                                         </span>
+                                        <?php if($req['is_required']): ?>
+                                            <span class="requirement-badge badge-required">Required</span>
+                                        <?php else: ?>
+                                            <span class="requirement-badge badge-optional">Optional</span>
+                                        <?php endif; ?>
+                                        <?php if($req['can_be_followed']): ?>
+                                            <span class="requirement-badge badge-follow">Can be followed</span>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                                 <div class="requirement-actions">
-                                    <button class="btn-notify" onclick="notifyRequirement('<?php echo $key; ?>', '<?php echo addslashes($req['label']); ?>')">
+                                    <button class="btn-notify" onclick="notifyRequirement('<?php echo $req['id']; ?>', '<?php echo addslashes($req['name']); ?>')">
                                         <i class="fas fa-bell"></i> Notify
                                     </button>
                                 </div>
                             </div>
                         <?php endforeach; ?>
                     </div>
+                </div>
+            <?php endif; ?>
+
+            <!-- If no requirements found -->
+            <?php if($total_requirements == 0): ?>
+                <div class="no-requirements">
+                    <i class="fas fa-clipboard-list"></i>
+                    <p>No specific requirements found for <?php echo htmlspecialchars($grade_level); ?> - <?php echo ucfirst($student_type); ?></p>
                 </div>
             <?php endif; ?>
 
@@ -439,12 +513,12 @@ $completion_percentage = $total_requirements > 0 ? round(($submitted_count / $to
                                         <span class="badge badge-<?php echo strtolower($row['status']); ?>">
                                             <?php echo $row['status']; ?>
                                         </span>
-                                    </td>
-                                    <td><?php echo date('M d, Y', strtotime($row['created_at'])); ?></td>
+                                    </div>
+                                    <td><?php echo date('M d, Y', strtotime($row['created_at'])); ?></div>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
-                    </table>
+                    </div>
                 </div>
             <?php else: ?>
                 <div class="no-data">
@@ -454,24 +528,26 @@ $completion_percentage = $total_requirements > 0 ? round(($submitted_count / $to
             <?php endif; ?>
         </div>
     </main>
-</body>
 
-<script>
-    // Pass PHP data to JavaScript
-    const enrollmentData = {
-        id: <?php echo $enrollment_id; ?>,
-        studentName: '<?php echo htmlspecialchars($enrollment['fullname']); ?>',
-        studentEmail: '<?php echo htmlspecialchars($enrollment['email']); ?>',
-        studentId: '<?php echo $enrollment['student_id']; ?>',
-        status: '<?php echo $enrollment['status']; ?>',
-        totalHistory: <?php echo count($history); ?>,
-        submittedCount: <?php echo $submitted_count; ?>,
-        missingCount: <?php echo count($missing_requirements); ?>,
-        completionPercentage: <?php echo $completion_percentage; ?>
-    };
-</script>
+    <script>
+        // Pass PHP data to JavaScript
+        const enrollmentData = {
+            id: <?php echo $enrollment_id; ?>,
+            studentName: '<?php echo htmlspecialchars($enrollment['fullname']); ?>',
+            studentEmail: '<?php echo htmlspecialchars($enrollment['email']); ?>',
+            studentId: '<?php echo $enrollment['student_id']; ?>',
+            gradeLevel: '<?php echo htmlspecialchars($grade_level); ?>',
+            studentType: '<?php echo $student_type; ?>',
+            status: '<?php echo $enrollment['status']; ?>',
+            totalHistory: <?php echo count($history); ?>,
+            submittedCount: <?php echo $submitted_count; ?>,
+            missingCount: <?php echo count($missing_requirements); ?>,
+            completionPercentage: <?php echo $completion_percentage; ?>,
+            totalRequirements: <?php echo $total_requirements; ?>
+        };
+    </script>
 
-<!-- JavaScript Files -->
-<script src="js/view_enrollment.js"></script>
+    <!-- JavaScript Files -->
+    <script src="js/view_enrollment.js"></script>
 </body>
 </html>

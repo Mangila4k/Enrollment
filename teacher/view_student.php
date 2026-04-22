@@ -89,45 +89,6 @@ if($enrollment) {
     }
 }
 
-// Get attendance statistics
-$attendance_stats_query = "
-    SELECT 
-        COUNT(*) as total_days,
-        SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) as present_count,
-        SUM(CASE WHEN status = 'Absent' THEN 1 ELSE 0 END) as absent_count,
-        SUM(CASE WHEN status = 'Late' THEN 1 ELSE 0 END) as late_count
-    FROM attendance
-    WHERE student_id = :student_id
-";
-
-$stmt = $conn->prepare($attendance_stats_query);
-$stmt->execute([':student_id' => $student_id]);
-$stats = $stmt->fetch(PDO::FETCH_ASSOC);
-
-$total_days = $stats['total_days'] ?? 0;
-$present_count = $stats['present_count'] ?? 0;
-$absent_count = $stats['absent_count'] ?? 0;
-$late_count = $stats['late_count'] ?? 0;
-$attendance_rate = $total_days > 0 ? round(($present_count / $total_days) * 100, 1) : 0;
-
-// Get recent attendance records
-$attendance_query = "
-    SELECT 
-        a.*,
-        DATE_FORMAT(a.date, '%M %d, %Y') as formatted_date,
-        sub.subject_name
-    FROM attendance a
-    LEFT JOIN subjects sub ON a.subject_id = sub.id
-    WHERE a.student_id = :student_id
-    ORDER BY a.date DESC
-    LIMIT 30
-";
-
-$stmt = $conn->prepare($attendance_query);
-$stmt->execute([':student_id' => $student_id]);
-$attendance_records = $stmt;
-$attendance_count = $stmt->rowCount();
-
 // Get grades
 $grades_query = "
     SELECT 
@@ -196,6 +157,15 @@ if($grade_stats['q2_avg'] > 0) { $sum_quarters += $grade_stats['q2_avg']; $total
 if($grade_stats['q3_avg'] > 0) { $sum_quarters += $grade_stats['q3_avg']; $total_quarters++; }
 if($grade_stats['q4_avg'] > 0) { $sum_quarters += $grade_stats['q4_avg']; $total_quarters++; }
 $grade_stats['final_avg'] = $total_quarters > 0 ? round($sum_quarters / $total_quarters, 2) : 0;
+
+// Initialize attendance stats as 0 since attendance table doesn't exist
+$attendance_rate = 0;
+$present_count = 0;
+$absent_count = 0;
+$late_count = 0;
+$total_days = 0;
+$attendance_records = null;
+$attendance_count = 0;
 ?>
 
 <!DOCTYPE html>
@@ -315,7 +285,7 @@ $grade_stats['final_avg'] = $total_quarters > 0 ? round($sum_quarters / $total_q
                             <i class="fas fa-envelope"></i> <?php echo htmlspecialchars($student['email']); ?>
                         </span>
                         <span class="meta-item">
-                            <i class="fas fa-id-card"></i> Student ID: <?php echo $student['id_number'] ?? str_pad($student['id'], 6, '0', STR_PAD_LEFT); ?>
+                            <i class="fas fa-id-card"></i> Student ID: <?php echo $student['id_number'] ?? 'N/A'; ?>
                         </span>
                         <?php if(isset($student['grade_name']) && $student['grade_name']): ?>
                         <span class="meta-item">
@@ -341,42 +311,6 @@ $grade_stats['final_avg'] = $total_quarters > 0 ? round($sum_quarters / $total_q
             <!-- Statistics -->
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="stat-icon"><i class="fas fa-calendar-check"></i></div>
-                    <div class="stat-content">
-                        <h3>Attendance Rate</h3>
-                        <div class="stat-number"><?php echo $attendance_rate; ?>%</div>
-                        <div class="stat-label">Overall attendance</div>
-                    </div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
-                    <div class="stat-content">
-                        <h3>Present</h3>
-                        <div class="stat-number"><?php echo $present_count; ?></div>
-                        <div class="stat-label">Days present</div>
-                    </div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-icon"><i class="fas fa-clock"></i></div>
-                    <div class="stat-content">
-                        <h3>Late</h3>
-                        <div class="stat-number"><?php echo $late_count; ?></div>
-                        <div class="stat-label">Days late</div>
-                    </div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-icon"><i class="fas fa-times-circle"></i></div>
-                    <div class="stat-content">
-                        <h3>Absent</h3>
-                        <div class="stat-number"><?php echo $absent_count; ?></div>
-                        <div class="stat-label">Days absent</div>
-                    </div>
-                </div>
-
-                <div class="stat-card">
                     <div class="stat-icon"><i class="fas fa-star"></i></div>
                     <div class="stat-content">
                         <h3>Average Grade</h3>
@@ -391,6 +325,24 @@ $grade_stats['final_avg'] = $total_quarters > 0 ? round($sum_quarters / $total_q
                         <h3>Subjects</h3>
                         <div class="stat-number"><?php echo $grade_stats['total_subjects']; ?></div>
                         <div class="stat-label">Enrolled subjects</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-chart-line"></i></div>
+                    <div class="stat-content">
+                        <h3>Quarters</h3>
+                        <div class="stat-number">4</div>
+                        <div class="stat-label">Academic quarters</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-calendar-alt"></i></div>
+                    <div class="stat-content">
+                        <h3>Member Since</h3>
+                        <div class="stat-number"><?php echo date('Y', strtotime($student['created_at'])); ?></div>
+                        <div class="stat-label">Registration year</div>
                     </div>
                 </div>
             </div>
@@ -413,7 +365,7 @@ $grade_stats['final_avg'] = $total_quarters > 0 ? round($sum_quarters / $total_q
                         </div>
                         <div class="info-row">
                             <span class="info-label"><i class="fas fa-id-card"></i> Student ID</span>
-                            <span class="info-value"><?php echo $student['id_number'] ?? str_pad($student['id'], 6, '0', STR_PAD_LEFT); ?></span>
+                            <span class="info-value"><?php echo $student['id_number'] ?? 'N/A'; ?></span>
                         </div>
                         <?php if(isset($student['created_at'])): ?>
                         <div class="info-row">
@@ -526,7 +478,7 @@ $grade_stats['final_avg'] = $total_quarters > 0 ? round($sum_quarters / $total_q
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
-                         </div>
+                        </div>
                     <?php else: ?>
                         <div class="no-data">
                             <i class="fas fa-star"></i>
@@ -537,28 +489,6 @@ $grade_stats['final_avg'] = $total_quarters > 0 ? round($sum_quarters / $total_q
                 </div>
             </div>
 
-            <!-- Quick Actions -->
-            <div class="card quick-actions-card">
-                <div class="card-header">
-                    <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
-                </div>
-                <div class="quick-actions">
-                    <a href="grades.php?student_id=<?php echo $student_id; ?>" class="action-btn warning">
-                        <i class="fas fa-star"></i> Manage Grades
-                    </a>
-                    <?php if(isset($student['section_id']) && $student['section_id']): ?>
-                    <a href="view_section.php?id=<?php echo $student['section_id']; ?>" class="action-btn secondary">
-                        <i class="fas fa-users"></i> View Class
-                    </a>
-                    <?php endif; ?>
-                    <a href="#" class="action-btn info" onclick="alert('Message feature coming soon!')">
-                        <i class="fas fa-envelope"></i> Send Message
-                    </a>
-                </div>
-            </div>
-        </main>
-    </div>
-
     <!-- View Student JS -->
     <script src="js/view_student.js"></script>
     
@@ -567,9 +497,29 @@ $grade_stats['final_avg'] = $total_quarters > 0 ? round($sum_quarters / $total_q
         const studentData = {
             id: <?php echo $student_id; ?>,
             name: '<?php echo addslashes($student['fullname']); ?>',
-            attendanceRate: <?php echo $attendance_rate; ?>,
             averageGrade: <?php echo $grade_stats['final_avg']; ?>
         };
+        
+        // Mobile menu toggle
+        const menuToggle = document.getElementById('menuToggle');
+        const sidebar = document.getElementById('sidebar');
+        
+        if(menuToggle) {
+            menuToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('active');
+            });
+        }
+        
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(e) {
+            if(window.innerWidth <= 768) {
+                if(sidebar && menuToggle) {
+                    if(!sidebar.contains(e.target) && !menuToggle.contains(e.target)) {
+                        sidebar.classList.remove('active');
+                    }
+                }
+            }
+        });
         
         // Auto-hide alerts after 5 seconds
         setTimeout(function() {

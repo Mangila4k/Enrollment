@@ -14,6 +14,27 @@ $admin_name = $_SESSION['user']['fullname'];
 $success_message = '';
 $error_message = '';
 
+// Function to send notification to all admins and registrars
+function notifyAdmins($conn, $title, $message, $link, $type = 'alert', $exclude_user_id = null) {
+    // Get all admin and registrar users
+    $sql = "SELECT id FROM users WHERE role IN ('Admin', 'Registrar')";
+    $params = [];
+    
+    if($exclude_user_id) {
+        $sql .= " AND id != ?";
+        $params[] = $exclude_user_id;
+    }
+    
+    $admin_stmt = $conn->prepare($sql);
+    $admin_stmt->execute($params);
+    $admins = $admin_stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    foreach($admins as $admin) {
+        $add_notif = $conn->prepare("INSERT INTO notifications (user_id, type, title, message, link, created_at, is_read) VALUES (?, ?, ?, ?, ?, NOW(), 0)");
+        $add_notif->execute([$admin['id'], $type, $title, $message, $link]);
+    }
+}
+
 // Check for session messages
 if(isset($_SESSION['success_message'])) {
     $success_message = $_SESSION['success_message'];
@@ -31,8 +52,13 @@ $stmt = $conn->prepare($query);
 $stmt->execute([$admin_id]);
 $admin = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// Check if required columns exist
+// Check if phone column exists and add if not
 try {
+    $check_phone = $conn->query("SHOW COLUMNS FROM users LIKE 'phone'");
+    if($check_phone->rowCount() == 0) {
+        $conn->exec("ALTER TABLE users ADD COLUMN phone VARCHAR(20) DEFAULT NULL AFTER email");
+    }
+    
     $check_column = $conn->query("SHOW COLUMNS FROM users LIKE 'profile_picture'");
     if($check_column->rowCount() == 0) {
         $conn->exec("ALTER TABLE users ADD COLUMN profile_picture VARCHAR(255) DEFAULT NULL");
@@ -43,7 +69,6 @@ try {
         $conn->exec("ALTER TABLE users ADD COLUMN email_verified TINYINT(1) DEFAULT 0");
     }
     
-    // Add pending email columns for email change verification
     $check_pending_email = $conn->query("SHOW COLUMNS FROM users LIKE 'pending_email'");
     if($check_pending_email->rowCount() == 0) {
         $conn->exec("ALTER TABLE users ADD COLUMN pending_email VARCHAR(255) DEFAULT NULL");
@@ -63,7 +88,6 @@ if(isset($_POST['send_email_verification'])) {
     } elseif(!filter_var($new_email, FILTER_VALIDATE_EMAIL)) {
         $error_message = "Invalid email format.";
     } else {
-        // Check if email already exists for another user
         $check_email = $conn->prepare("SELECT id FROM users WHERE email = ? AND id != ?");
         $check_email->execute([$new_email, $admin_id]);
         
@@ -72,15 +96,12 @@ if(isset($_POST['send_email_verification'])) {
         } else {
             require_once '../config/email_config.php';
             
-            // Generate verification code
             $verification_code = sprintf("%06d", mt_rand(100000, 999999));
             $expires = date('Y-m-d H:i:s', strtotime('+1 hour'));
             
-            // Store pending email and code in database
             $update = $conn->prepare("UPDATE users SET pending_email = ?, pending_email_code = ?, pending_email_expires = ? WHERE id = ?");
             $update->execute([$new_email, $verification_code, $expires, $admin_id]);
             
-            // Send verification email to NEW email address
             $subject = "Email Change Verification - PLSNHS";
             $message = "
             <!DOCTYPE html>
@@ -129,7 +150,6 @@ if(isset($_POST['send_email_verification'])) {
 if(isset($_POST['verify_new_email'])) {
     $verification_code = trim($_POST['verification_code']);
     
-    // Get pending email info
     $stmt = $conn->prepare("SELECT pending_email, pending_email_code, pending_email_expires FROM users WHERE id = ?");
     $stmt->execute([$admin_id]);
     $pending = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -140,17 +160,21 @@ if(isset($_POST['verify_new_email'])) {
         
         if($now > $expires) {
             $error_message = "Verification code has expired. Please request a new email change.";
-            // Clear pending email
             $clear = $conn->prepare("UPDATE users SET pending_email = NULL, pending_email_code = NULL, pending_email_expires = NULL WHERE id = ?");
             $clear->execute([$admin_id]);
         } elseif($pending['pending_email_code'] == $verification_code) {
-            // Update email to new email
             $new_email = $pending['pending_email'];
+            $old_email = $admin['email'];
             $update = $conn->prepare("UPDATE users SET email = ?, pending_email = NULL, pending_email_code = NULL, pending_email_expires = NULL WHERE id = ?");
             $update->execute([$new_email, $admin_id]);
             
-            // Update session
             $_SESSION['user']['email'] = $new_email;
+            
+            // NOTIFY ADMINS ABOUT EMAIL CHANGE
+            $notif_title = "📧 Admin Email Changed";
+            $notif_message = "Admin " . $admin['fullname'] . " has changed their email address from " . $old_email . " to " . $new_email;
+            $notif_link = "profile.php";
+            notifyAdmins($conn, $notif_title, $notif_message, $notif_link, 'alert', $admin_id);
             
             $_SESSION['success_message'] = "Email changed successfully to: $new_email";
             header("Location: profile.php");
@@ -218,6 +242,13 @@ if(isset($_POST['upload_profile_pic'])) {
                 $update_stmt = $conn->prepare("UPDATE users SET profile_picture = ? WHERE id = ?");
                 if($update_stmt->execute([$db_path, $admin_id])) {
                     $_SESSION['user']['profile_picture'] = $db_path;
+                    
+                    // NOTIFY ADMINS ABOUT PROFILE PICTURE UPDATE
+                    $notif_title = "🖼️ Admin Profile Picture Updated";
+                    $notif_message = "Admin " . $admin['fullname'] . " has updated their profile picture.";
+                    $notif_link = "profile.php";
+                    notifyAdmins($conn, $notif_title, $notif_message, $notif_link, 'update', $admin_id);
+                    
                     $_SESSION['success_message'] = "Profile picture updated successfully!";
                     header("Location: profile.php");
                     exit();
@@ -243,6 +274,13 @@ if(isset($_GET['remove_pic'])) {
     $update_stmt = $conn->prepare("UPDATE users SET profile_picture = NULL WHERE id = ?");
     if($update_stmt->execute([$admin_id])) {
         $_SESSION['user']['profile_picture'] = null;
+        
+        // NOTIFY ADMINS ABOUT PROFILE PICTURE REMOVAL
+        $notif_title = "🖼️ Admin Profile Picture Removed";
+        $notif_message = "Admin " . $admin['fullname'] . " has removed their profile picture.";
+        $notif_link = "profile.php";
+        notifyAdmins($conn, $notif_title, $notif_message, $notif_link, 'update', $admin_id);
+        
         $_SESSION['success_message'] = "Profile picture removed successfully!";
         header("Location: profile.php");
         exit();
@@ -289,10 +327,11 @@ if(isset($_SESSION['2fa_verified']) && $_SESSION['2fa_verified'] === true) {
     }
 }
 
-// Handle profile update (name and ID only, email handled separately)
+// Handle profile update (name, ID, and phone)
 if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_profile'])) {
     $fullname = trim($_POST['fullname']);
     $id_number = !empty($_POST['id_number']) ? trim($_POST['id_number']) : null;
+    $phone = !empty($_POST['phone']) ? preg_replace('/[^0-9]/', '', $_POST['phone']) : null;
     
     $errors = [];
     
@@ -309,13 +348,50 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_profile'])) {
         }
     }
     
+    // Validate phone if provided
+    if(!empty($phone)) {
+        if(strlen($phone) == 11 && substr($phone, 0, 2) == '09') {
+            // Valid Philippine number
+        } elseif(strlen($phone) == 10 && substr($phone, 0, 2) == '09') {
+            $phone = '0' . $phone;
+        } else {
+            $errors[] = "Invalid Philippine mobile number. Format: 09XXXXXXXXX (11 digits)";
+        }
+    }
+    
     if(empty($errors)) {
-        $update_query = "UPDATE users SET fullname = ?, id_number = ? WHERE id = ?";
+        $old_fullname = $admin['fullname'];
+        $old_id_number = $admin['id_number'];
+        $old_phone = $admin['phone'];
+        
+        $update_query = "UPDATE users SET fullname = ?, id_number = ?, phone = ? WHERE id = ?";
         $update_stmt = $conn->prepare($update_query);
         
-        if($update_stmt->execute([$fullname, $id_number, $admin_id])) {
+        if($update_stmt->execute([$fullname, $id_number, $phone, $admin_id])) {
             $_SESSION['user']['fullname'] = $fullname;
             $_SESSION['user']['id_number'] = $id_number;
+            
+            // NOTIFY ADMINS ABOUT PROFILE UPDATE
+            if($fullname != $old_fullname) {
+                $notif_title = "📝 Admin Profile Updated";
+                $notif_message = "Admin " . $old_fullname . " has updated their profile name to " . $fullname;
+                $notif_link = "profile.php";
+                notifyAdmins($conn, $notif_title, $notif_message, $notif_link, 'update', $admin_id);
+            }
+            
+            if($id_number != $old_id_number && !empty($id_number)) {
+                $notif_title = "🆔 Admin ID Number Updated";
+                $notif_message = "Admin " . $fullname . " has updated their ID number to " . $id_number;
+                $notif_link = "profile.php";
+                notifyAdmins($conn, $notif_title, $notif_message, $notif_link, 'update', $admin_id);
+            }
+            
+            if($phone != $old_phone && !empty($phone)) {
+                $notif_title = "📱 Admin Contact Number Updated";
+                $notif_message = "Admin " . $fullname . " has updated their contact number to " . $phone;
+                $notif_link = "profile.php";
+                notifyAdmins($conn, $notif_title, $notif_message, $notif_link, 'update', $admin_id);
+            }
             
             $_SESSION['success_message'] = "Profile updated successfully!";
             header("Location: profile.php");
@@ -330,7 +406,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_profile'])) {
     }
 }
 
-// Handle password change
+// Handle password change with strong validation
 if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['change_password'])) {
     $current_password = $_POST['current_password'];
     $new_password = $_POST['new_password'];
@@ -346,10 +422,31 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['change_password'])) {
         }
     }
     
+    // Strong password validation
     if(empty($new_password)) {
         $errors[] = "New password is required";
-    } elseif(strlen($new_password) < 6) {
-        $errors[] = "New password must be at least 6 characters";
+    } else {
+        $password_errors = [];
+        
+        if(strlen($new_password) < 8) {
+            $password_errors[] = "at least 8 characters";
+        }
+        if(!preg_match('/[A-Z]/', $new_password)) {
+            $password_errors[] = "at least one uppercase letter (A-Z)";
+        }
+        if(!preg_match('/[a-z]/', $new_password)) {
+            $password_errors[] = "at least one lowercase letter (a-z)";
+        }
+        if(!preg_match('/[0-9]/', $new_password)) {
+            $password_errors[] = "at least one number (0-9)";
+        }
+        if(!preg_match('/[!@#$%^&*(),.?":{}|<>]/', $new_password)) {
+            $password_errors[] = "at least one special character (!@#$%^&*)";
+        }
+        
+        if(!empty($password_errors)) {
+            $errors[] = "Password must contain: " . implode(", ", $password_errors);
+        }
     }
     
     if($new_password !== $confirm_password) {
@@ -371,6 +468,12 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['change_password'])) {
             $update_stmt = $conn->prepare($update_query);
             
             if($update_stmt->execute([$hashed_password, $admin_id])) {
+                // NOTIFY ADMINS ABOUT PASSWORD CHANGE
+                $notif_title = "🔐 Admin Password Changed";
+                $notif_message = "Admin " . $admin['fullname'] . " has changed their account password.";
+                $notif_link = "profile.php";
+                notifyAdmins($conn, $notif_title, $notif_message, $notif_link, 'alert', $admin_id);
+                
                 $_SESSION['success_message'] = "Password changed successfully!";
                 header("Location: profile.php");
                 exit();
@@ -401,6 +504,7 @@ $two_factor_last_used = $admin['two_factor_last_used'] ?? null;
 $profile_picture = $admin['profile_picture'] ?? null;
 $email_verified = $admin['email_verified'] ?? 0;
 $current_email = $admin['email'];
+$phone_number = $admin['phone'] ?? null;
 
 // Get profile picture for sidebar
 $sidebar_profile_pic = $_SESSION['user']['profile_picture'] ?? $profile_picture;
@@ -417,162 +521,59 @@ $sidebar_profile_pic = $_SESSION['user']['profile_picture'] ?? $profile_picture;
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/profile.css">
     <style>
-        .verification-status {
-            background: var(--card-bg);
-            border-radius: var(--border-radius);
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        
-        .verification-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 15px;
-        }
-        
-        .verification-header i {
-            font-size: 24px;
-        }
-        
-        .verification-header h3 {
-            font-size: 18px;
-            margin: 0;
-            color: var(--text-dark);
-        }
-        
-        .verification-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 16px;
-            border-radius: 50px;
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 15px;
-        }
-        
-        .verification-badge.verified {
-            background: #d4edda;
-            color: #155724;
-        }
-        
-        .verification-badge.unverified {
-            background: #fff3cd;
-            color: #856404;
-        }
-        
-        .verification-info {
-            color: var(--text-gray);
-            font-size: 14px;
-            line-height: 1.6;
-        }
-        
-        .btn-verify {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 10px 20px;
+        .password-requirements {
+            margin-top: 8px;
+            padding: 10px;
+            background: #fef2f2;
             border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: all 0.3s;
-            margin-top: 15px;
-        }
-        
-        .btn-verify:hover {
-            background: var(--primary-dark);
-            transform: translateY(-2px);
-        }
-        
-        .btn-verify i {
-            margin-right: 8px;
-        }
-        
-        .profile-info-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 15px;
-            padding: 15px 0;
-            border-bottom: 1px solid var(--border-color);
-        }
-        
-        .profile-info-item:last-child {
-            border-bottom: none;
-        }
-        
-        .info-icon {
-            width: 40px;
-            height: 40px;
-            background: rgba(11, 79, 46, 0.1);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--primary);
-        }
-        
-        .info-content {
-            flex: 1;
-        }
-        
-        .info-label {
+            border-left: 4px solid #dc2626;
             font-size: 12px;
-            color: var(--text-gray);
-            margin-bottom: 4px;
         }
-        
-        .info-value {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--text-dark);
+        .password-requirements ul {
+            margin-left: 20px;
+            margin-top: 5px;
+            margin-bottom: 0;
         }
-        
-        .verified-badge {
-            color: #28a745;
-            font-size: 14px;
-            margin-left: 10px;
+        .password-requirements li {
+            color: #dc2626;
+            margin: 3px 0;
         }
-        
-        .unverified-badge {
-            color: #dc3545;
-            font-size: 14px;
-            margin-left: 10px;
+        .password-requirements li.valid {
+            color: #10b981;
+            text-decoration: line-through;
         }
-        
-        .email-change-section {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid var(--border-color);
+        .password-requirements li i {
+            margin-right: 6px;
+            width: 16px;
         }
-        
-        .email-change-form {
-            margin-top: 15px;
+        .password-strength {
+            margin-top: 8px;
         }
-        
-        .email-change-form .form-group {
-            margin-bottom: 15px;
+        .password-strength-bar {
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 8px;
         }
-        
-        .pending-email-alert {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
+        .password-strength-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s, background 0.3s;
+            border-radius: 3px;
         }
-        
-        .pending-email-alert i {
-            color: #856404;
-            margin-right: 10px;
+        .password-strength-text {
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
-        
-        .verify-code-input {
-            font-size: 24px;
-            letter-spacing: 8px;
-            text-align: center;
-            font-family: monospace;
+        .password-match {
+            font-size: 12px;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
     </style>
 </head>
@@ -656,7 +657,7 @@ $sidebar_profile_pic = $_SESSION['user']['profile_picture'] ?? $profile_picture;
             <div class="profile-grid">
                 <!-- Left Column - Profile Info -->
                 <div>
-                    <div class="form-card">
+                    <div class="profile-card">
                         <div class="profile-avatar-large" onclick="openImageModal()">
                             <?php if($profile_picture && file_exists("../" . $profile_picture)): ?>
                                 <img src="../<?php echo $profile_picture; ?>?t=<?php echo time(); ?>" alt="Profile Picture">
@@ -693,7 +694,7 @@ $sidebar_profile_pic = $_SESSION['user']['profile_picture'] ?? $profile_picture;
                         <div class="profile-info-item">
                             <div class="info-icon"><i class="fas fa-envelope"></i></div>
                             <div class="info-content">
-                                <div class="info-label">Current Email Address</div>
+                                <div class="info-label">Email Address</div>
                                 <div class="info-value">
                                     <?php echo htmlspecialchars($current_email); ?>
                                     <?php if($email_verified == 1): ?>
@@ -710,6 +711,14 @@ $sidebar_profile_pic = $_SESSION['user']['profile_picture'] ?? $profile_picture;
                             <div class="info-content">
                                 <div class="info-label">ID Number</div>
                                 <div class="info-value"><?php echo $admin['id_number'] ?? 'Not set'; ?></div>
+                            </div>
+                        </div>
+
+                        <div class="profile-info-item">
+                            <div class="info-icon"><i class="fas fa-phone"></i></div>
+                            <div class="info-content">
+                                <div class="info-label">Contact Number</div>
+                                <div class="info-value"><?php echo $phone_number ?: 'Not set'; ?></div>
                             </div>
                         </div>
 
@@ -843,7 +852,7 @@ $sidebar_profile_pic = $_SESSION['user']['profile_picture'] ?? $profile_picture;
                         </div>
                     </div>
 
-                    <!-- Edit Profile Form (Name and ID only) -->
+                    <!-- Edit Profile Form (Name, ID, and Phone) -->
                     <div class="form-card">
                         <h3><i class="fas fa-user-edit"></i> Edit Profile Information</h3>
                         <form method="POST" action="">
@@ -855,6 +864,14 @@ $sidebar_profile_pic = $_SESSION['user']['profile_picture'] ?? $profile_picture;
                             <div class="form-group">
                                 <label>ID Number</label>
                                 <input type="text" name="id_number" value="<?php echo htmlspecialchars($admin['id_number'] ?? ''); ?>" placeholder="Enter your ID number">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Contact Number</label>
+                                <input type="tel" name="phone" value="<?php echo htmlspecialchars($phone_number ?? ''); ?>" placeholder="09XXXXXXXXX">
+                                <small style="color: #666; display: block; margin-top: 5px;">
+                                    <i class="fas fa-info-circle"></i> Philippine mobile number format: 09XXXXXXXXX (11 digits)
+                                </small>
                             </div>
 
                             <div class="form-group">
@@ -889,11 +906,28 @@ $sidebar_profile_pic = $_SESSION['user']['profile_picture'] ?? $profile_picture;
                                         <div class="form-group">
                                             <label>New Password <span>*</span></label>
                                             <input type="password" name="new_password" id="new_password" disabled>
+                                            
+                                            <!-- Password strength meter -->
                                             <div class="password-strength">
-                                                <div class="password-strength-bar" id="passwordStrengthBar"></div>
+                                                <div class="password-strength-bar">
+                                                    <div class="password-strength-fill" id="passwordStrengthFill"></div>
+                                                </div>
+                                                <div class="password-strength-text" id="passwordStrengthText">
+                                                    <i class="fas fa-info-circle"></i>
+                                                    <span>Enter new password</span>
+                                                </div>
                                             </div>
-                                            <div class="password-strength-text" id="passwordStrengthText">
-                                                <i class="fas fa-info-circle"></i> Minimum 6 characters
+                                            
+                                            <!-- Password requirements checklist -->
+                                            <div class="password-requirements" id="passwordRequirements">
+                                                <small><i class="fas fa-shield-alt"></i> Password must contain:</small>
+                                                <ul>
+                                                    <li id="req-length"><i class="fas fa-circle"></i> At least 8 characters</li>
+                                                    <li id="req-upper"><i class="fas fa-circle"></i> At least 1 uppercase letter (A-Z)</li>
+                                                    <li id="req-lower"><i class="fas fa-circle"></i> At least 1 lowercase letter (a-z)</li>
+                                                    <li id="req-number"><i class="fas fa-circle"></i> At least 1 number (0-9)</li>
+                                                    <li id="req-special"><i class="fas fa-circle"></i> At least 1 special character (!@#$%^&*)</li>
+                                                </ul>
                                             </div>
                                         </div>
 
@@ -968,40 +1002,9 @@ $sidebar_profile_pic = $_SESSION['user']['profile_picture'] ?? $profile_picture;
         </div>
     </div>
 
+    <script src="js/profile.js"></script>
     <script>
-        function openImageModal() {
-            document.getElementById('imageModal').classList.add('active');
-        }
-
-        function closeImageModal() {
-            document.getElementById('imageModal').classList.remove('active');
-        }
-
-        function previewImage(input) {
-            if (input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const previewDiv = document.getElementById('imagePreview');
-                    previewDiv.innerHTML = `<img src="${e.target.result}" alt="Profile Preview" style="width: 100%; height: 100%; object-fit: cover;">`;
-                }
-                reader.readAsDataURL(input.files[0]);
-            }
-        }
-
-        window.onclick = function(event) {
-            const modal = document.getElementById('imageModal');
-            if (event.target === modal) {
-                closeImageModal();
-            }
-        }
-
-        // Auto-format code input
-        document.querySelectorAll('.verify-code-input').forEach(input => {
-            input.addEventListener('input', function(e) {
-                this.value = this.value.replace(/[^0-9]/g, '').slice(0, 6);
-            });
-        });
-
+        // Password strength checker for admin profile
         const changePasswordCheckbox = document.getElementById('change_password_checkbox');
         const passwordFields = document.getElementById('passwordFields');
         const currentPassword = document.getElementById('current_password');
@@ -1033,80 +1036,165 @@ $sidebar_profile_pic = $_SESSION['user']['profile_picture'] ?? $profile_picture;
         }
 
         function resetPasswordStrength() {
-            const strengthBar = document.getElementById('passwordStrengthBar');
+            const strengthFill = document.getElementById('passwordStrengthFill');
             const strengthText = document.getElementById('passwordStrengthText');
             const matchText = document.getElementById('passwordMatchText');
-            if(strengthBar) strengthBar.style.width = '0';
-            if(strengthText) strengthText.innerHTML = '<i class="fas fa-info-circle"></i> Minimum 6 characters';
-            if(matchText) matchText.innerHTML = '<i class="fas fa-info-circle"></i> Re-enter new password';
+            
+            if(strengthFill) strengthFill.style.width = '0%';
+            if(strengthText) strengthText.innerHTML = '<i class="fas fa-info-circle"></i> <span>Enter new password</span>';
+            if(matchText) matchText.innerHTML = '<i class="fas fa-info-circle"></i> <span>Re-enter new password</span>';
+            
+            // Reset requirement list
+            const requirements = ['length', 'upper', 'lower', 'number', 'special'];
+            requirements.forEach(req => {
+                const element = document.getElementById(`req-${req}`);
+                if(element) {
+                    element.classList.remove('valid');
+                    element.innerHTML = '<i class="fas fa-circle"></i> ' + element.innerText.replace(/[✓✔✅]/g, '').trim();
+                }
+            });
         }
 
-        function checkPasswordStrength() {
+        function validatePassword(password) {
+            return {
+                length: password.length >= 8,
+                uppercase: /[A-Z]/.test(password),
+                lowercase: /[a-z]/.test(password),
+                number: /[0-9]/.test(password),
+                special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+            };
+        }
+
+        function updatePasswordStrength() {
+            if(!newPassword) return;
+            
             const password = newPassword.value;
-            let strength = 0;
-            if (password.length >= 6) strength++;
-            if (password.match(/[a-z]+/)) strength++;
-            if (password.match(/[A-Z]+/)) strength++;
-            if (password.match(/[0-9]+/)) strength++;
-            if (password.match(/[$@#&!]+/)) strength++;
-
-            const strengthBar = document.getElementById('passwordStrengthBar');
-            const strengthText = document.getElementById('passwordStrengthText');
-
-            if (password.length === 0) {
-                strengthBar.style.width = '0';
-                strengthText.innerHTML = '<i class="fas fa-info-circle"></i> Minimum 6 characters';
-                return;
+            const validation = validatePassword(password);
+            
+            // Update requirement list
+            const reqLength = document.getElementById('req-length');
+            const reqUpper = document.getElementById('req-upper');
+            const reqLower = document.getElementById('req-lower');
+            const reqNumber = document.getElementById('req-number');
+            const reqSpecial = document.getElementById('req-special');
+            
+            if(reqLength) {
+                if(validation.length) {
+                    reqLength.classList.add('valid');
+                    reqLength.innerHTML = '<i class="fas fa-check-circle"></i> At least 8 characters';
+                } else {
+                    reqLength.classList.remove('valid');
+                    reqLength.innerHTML = '<i class="fas fa-circle"></i> At least 8 characters';
+                }
             }
-
-            if (strength <= 2) {
-                strengthBar.style.width = '33%';
-                strengthBar.style.backgroundColor = '#ef4444';
-                strengthText.innerHTML = '<i class="fas fa-shield-alt"></i> Weak password';
-            } else if (strength <= 4) {
-                strengthBar.style.width = '66%';
-                strengthBar.style.backgroundColor = '#f59e0b';
-                strengthText.innerHTML = '<i class="fas fa-shield-alt"></i> Medium password';
-            } else {
-                strengthBar.style.width = '100%';
-                strengthBar.style.backgroundColor = '#10b981';
-                strengthText.innerHTML = '<i class="fas fa-shield-alt"></i> Strong password';
+            
+            if(reqUpper) {
+                if(validation.uppercase) {
+                    reqUpper.classList.add('valid');
+                    reqUpper.innerHTML = '<i class="fas fa-check-circle"></i> At least 1 uppercase letter (A-Z)';
+                } else {
+                    reqUpper.classList.remove('valid');
+                    reqUpper.innerHTML = '<i class="fas fa-circle"></i> At least 1 uppercase letter (A-Z)';
+                }
+            }
+            
+            if(reqLower) {
+                if(validation.lowercase) {
+                    reqLower.classList.add('valid');
+                    reqLower.innerHTML = '<i class="fas fa-check-circle"></i> At least 1 lowercase letter (a-z)';
+                } else {
+                    reqLower.classList.remove('valid');
+                    reqLower.innerHTML = '<i class="fas fa-circle"></i> At least 1 lowercase letter (a-z)';
+                }
+            }
+            
+            if(reqNumber) {
+                if(validation.number) {
+                    reqNumber.classList.add('valid');
+                    reqNumber.innerHTML = '<i class="fas fa-check-circle"></i> At least 1 number (0-9)';
+                } else {
+                    reqNumber.classList.remove('valid');
+                    reqNumber.innerHTML = '<i class="fas fa-circle"></i> At least 1 number (0-9)';
+                }
+            }
+            
+            if(reqSpecial) {
+                if(validation.special) {
+                    reqSpecial.classList.add('valid');
+                    reqSpecial.innerHTML = '<i class="fas fa-check-circle"></i> At least 1 special character (!@#$%^&*)';
+                } else {
+                    reqSpecial.classList.remove('valid');
+                    reqSpecial.innerHTML = '<i class="fas fa-circle"></i> At least 1 special character (!@#$%^&*)';
+                }
+            }
+            
+            // Calculate strength percentage
+            const validCount = Object.values(validation).filter(v => v === true).length;
+            const strengthPercent = (validCount / 5) * 100;
+            const strengthFill = document.getElementById('passwordStrengthFill');
+            const strengthText = document.getElementById('passwordStrengthText');
+            
+            if(strengthFill) {
+                strengthFill.style.width = strengthPercent + '%';
+                if(strengthPercent <= 25) {
+                    strengthFill.style.backgroundColor = '#ef4444';
+                    if(strengthText) strengthText.innerHTML = '<i class="fas fa-shield-alt"></i> <span style="color: #ef4444;">Weak password</span>';
+                } else if(strengthPercent <= 50) {
+                    strengthFill.style.backgroundColor = '#f59e0b';
+                    if(strengthText) strengthText.innerHTML = '<i class="fas fa-shield-alt"></i> <span style="color: #f59e0b;">Fair password</span>';
+                } else if(strengthPercent <= 75) {
+                    strengthFill.style.backgroundColor = '#3b82f6';
+                    if(strengthText) strengthText.innerHTML = '<i class="fas fa-shield-alt"></i> <span style="color: #3b82f6;">Good password</span>';
+                } else {
+                    strengthFill.style.backgroundColor = '#10b981';
+                    if(strengthText) strengthText.innerHTML = '<i class="fas fa-shield-alt"></i> <span style="color: #10b981;">Strong password</span>';
+                }
+            }
+            
+            // Check password match
+            checkPasswordMatch();
+            
+            // Enable/disable submit button based on all requirements met
+            const isStrong = Object.values(validation).every(v => v === true);
+            const confirm = confirmPassword ? confirmPassword.value : '';
+            const passwordsMatch = (password === confirm);
+            
+            if(changePasswordBtn) {
+                changePasswordBtn.disabled = !(isStrong && passwordsMatch && password.length > 0);
             }
         }
 
         function checkPasswordMatch() {
+            if(!newPassword || !confirmPassword) return;
+            
             const password = newPassword.value;
             const confirm = confirmPassword.value;
             const matchText = document.getElementById('passwordMatchText');
 
             if (confirm.length === 0) {
-                matchText.innerHTML = '<i class="fas fa-info-circle"></i> Re-enter new password';
+                matchText.innerHTML = '<i class="fas fa-info-circle"></i> <span>Re-enter new password</span>';
             } else if (password === confirm) {
                 matchText.innerHTML = '<i class="fas fa-check-circle" style="color: #10b981;"></i> <span style="color: #10b981;">Passwords match</span>';
             } else {
                 matchText.innerHTML = '<i class="fas fa-exclamation-circle" style="color: #ef4444;"></i> <span style="color: #ef4444;">Passwords do not match</span>';
             }
+            
+            // Re-check button state
+            if(changePasswordBtn && newPassword.value.length > 0) {
+                const validation = validatePassword(newPassword.value);
+                const isStrong = Object.values(validation).every(v => v === true);
+                changePasswordBtn.disabled = !(isStrong && password === confirm);
+            }
         }
 
         if(newPassword) {
-            newPassword.addEventListener('input', checkPasswordStrength);
+            newPassword.addEventListener('input', updatePasswordStrength);
             newPassword.addEventListener('input', checkPasswordMatch);
         }
         
         if(confirmPassword) {
             confirmPassword.addEventListener('input', checkPasswordMatch);
         }
-
-        setTimeout(function() {
-            document.querySelectorAll('.alert').forEach(alert => {
-                setTimeout(() => {
-                    alert.style.opacity = '0';
-                    setTimeout(() => {
-                        if(alert.parentNode) alert.remove();
-                    }, 300);
-                }, 3000);
-            });
-        }, 1000);
     </script>
 </body>
 </html>

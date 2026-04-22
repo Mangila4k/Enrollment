@@ -179,7 +179,7 @@
 
 /* View Grade Button */
 .view-grade-btn {
-    background: linear-gradient(135deg, var(--info), #2563eb);
+    background: linear-gradient(135deg,#0a6849);
     color: white;
     border: none;
     padding: 8px 20px;
@@ -194,7 +194,7 @@
 }
 
 .view-grade-btn:hover {
-    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    background: linear-gradient(135deg, #0a6849, #0a6849);
     transform: translateY(-2px);
     box-shadow: var(--shadow-sm);
 }

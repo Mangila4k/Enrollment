@@ -42,7 +42,6 @@ $stmt = $conn->query("SELECT * FROM grade_levels ORDER BY id");
 $grade_levels = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Initialize report data
-$report_data = null;
 $report_title = '';
 $report_headers = [];
 $report_rows = [];
@@ -61,26 +60,24 @@ if($report_type == 'enrollment_summary') {
             SUM(CASE WHEN e.status = 'Rejected' THEN 1 ELSE 0 END) as rejected
         FROM grade_levels g
         LEFT JOIN enrollments e ON g.id = e.grade_id
-            AND e.created_at BETWEEN :date_from AND :date_to
-        GROUP BY g.id
+        GROUP BY g.id, g.grade_name
         ORDER BY g.id
     ";
     
     $stmt = $conn->prepare($query);
-    $stmt->execute([
-        ':date_from' => $date_from . ' 00:00:00',
-        ':date_to' => $date_to . ' 23:59:59'
-    ]);
+    $stmt->execute();
     $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     foreach($results as $row) {
-        $enrollment_rate = $row['total'] > 0 ? round(($row['enrolled'] / $row['total']) * 100, 2) : 0;
+        $total = $row['total'] ?? 0;
+        $enrolled = $row['enrolled'] ?? 0;
+        $enrollment_rate = $total > 0 ? round(($enrolled / $total) * 100, 2) : 0;
         $report_rows[] = [
             $row['grade_name'],
-            $row['total'],
-            $row['pending'],
-            $row['enrolled'],
-            $row['rejected'],
+            $total,
+            $row['pending'] ?? 0,
+            $enrolled,
+            $row['rejected'] ?? 0,
             $enrollment_rate . '%'
         ];
     }
@@ -107,13 +104,13 @@ elseif($report_type == 'student_list') {
     $params = [];
     
     if(!empty($grade_filter)) {
-        $query .= " AND e.grade_id = :grade";
-        $params[':grade'] = $grade_filter;
+        $query .= " AND e.grade_id = ?";
+        $params[] = $grade_filter;
     }
     
     if(!empty($status_filter)) {
-        $query .= " AND e.status = :status";
-        $params[':status'] = $status_filter;
+        $query .= " AND e.status = ?";
+        $params[] = $status_filter;
     }
     
     $query .= " ORDER BY u.fullname";
@@ -146,16 +143,13 @@ elseif($report_type == 'enrollment_trends') {
             SUM(CASE WHEN status = 'Enrolled' THEN 1 ELSE 0 END) as enrolled,
             SUM(CASE WHEN status = 'Rejected' THEN 1 ELSE 0 END) as rejected
         FROM enrollments
-        WHERE created_at BETWEEN :date_from AND :date_to
+        WHERE DATE(created_at) BETWEEN ? AND ?
         GROUP BY DATE_FORMAT(created_at, '%Y-%m')
         ORDER BY month DESC
     ";
     
     $stmt = $conn->prepare($query);
-    $stmt->execute([
-        ':date_from' => $date_from . ' 00:00:00',
-        ':date_to' => $date_to . ' 23:59:59'
-    ]);
+    $stmt->execute([$date_from, $date_to]);
     $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     $prev_total = 0;
@@ -179,20 +173,19 @@ elseif($report_type == 'strand_distribution') {
     
     $query = "
         SELECT 
-            COALESCE(e.strand, 'No Strand') as strand,
+            CASE 
+                WHEN e.strand IS NULL OR e.strand = '' THEN 'Not Specified'
+                ELSE e.strand 
+            END as strand,
             COUNT(DISTINCT e.student_id) as student_count
         FROM enrollments e
         WHERE e.grade_id IN (5, 6) AND e.status = 'Enrolled'
-            AND e.created_at BETWEEN :date_from AND :date_to
         GROUP BY e.strand
         ORDER BY student_count DESC
     ";
     
     $stmt = $conn->prepare($query);
-    $stmt->execute([
-        ':date_from' => $date_from . ' 00:00:00',
-        ':date_to' => $date_to . ' 23:59:59'
-    ]);
+    $stmt->execute();
     $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     $total = 0;
@@ -301,6 +294,21 @@ $this_month_enrollments = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
                 </div>
             </div>
 
+            <!-- Alert Messages -->
+            <?php if($success_message): ?>
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i>
+                    <?php echo $success_message; ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if($error_message): ?>
+                <div class="alert alert-error">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <?php echo $error_message; ?>
+                </div>
+            <?php endif; ?>
+
             <!-- Statistics Cards -->
             <div class="stats-grid">
                 <div class="stat-card">
@@ -388,7 +396,7 @@ $this_month_enrollments = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
 
                     <div class="control-group action-buttons">
                         <button type="submit" class="btn-generate">
-                            <i class="fas fa-sync-alt"></i> Apply
+                            <i class="fas fa-sync-alt"></i> Generate Report
                         </button>
                         <a href="reports.php" class="btn-reset">
                             <i class="fas fa-redo-alt"></i> Reset
@@ -404,10 +412,10 @@ $this_month_enrollments = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
                         <h2><i class="fas fa-chart-bar"></i> <?php echo $report_title; ?></h2>
                         <div class="report-actions">
                             <button class="btn-export" id="exportExcelBtn">
-                                <i class="fas fa-file-excel"></i> Export
+                                <i class="fas fa-file-excel"></i> Export Excel
                             </button>
                             <button class="btn-print" id="printBtn">
-                                <i class="fas fa-print"></i> Print
+                                <i class="fas fa-print"></i> Print Report
                             </button>
                         </div>
                     </div>
@@ -430,16 +438,16 @@ $this_month_enrollments = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
                                 <?php foreach($report_rows as $row): ?>
                                     <tr>
                                         <?php foreach($row as $cell): ?>
-                                            <td><?php echo $cell; ?></td>
+                                            <td><?php echo $cell; ?></div>
                                         <?php endforeach; ?>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
                             <?php if(count($report_rows) > 0): ?>
                                 <tfoot>
-                                    <tr>
-                                        <td colspan="<?php echo count($report_headers); ?>" class="total-records">
-                                            Total Records: <?php echo count($report_rows); ?>
+                                    <tr class="total-records">
+                                        <td colspan="<?php echo count($report_headers); ?>">
+                                            <strong>Total Records: <?php echo count($report_rows); ?></strong>
                                          </div>
                                     </tr>
                                 </tfoot>
@@ -461,26 +469,5 @@ $this_month_enrollments = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
 
     <!-- Reports JS -->
     <script src="js/reports.js"></script>
-    
-    <script>
-        // Pass PHP data to JavaScript
-        const reportData = {
-            reportType: '<?php echo $report_type; ?>',
-            dateFrom: '<?php echo $date_from; ?>',
-            dateTo: '<?php echo $date_to; ?>',
-            totalRecords: <?php echo count($report_rows); ?>
-        };
-        
-        // Auto-hide alerts after 5 seconds
-        setTimeout(function() {
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(alert => {
-                alert.style.opacity = '0';
-                setTimeout(() => {
-                    alert.style.display = 'none';
-                }, 300);
-            });
-        }, 5000);
-    </script>
 </body>
 </html>

@@ -53,8 +53,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Forgot Password - PLSNHS</title>
+    <title>Forgot Password - PLS NHS</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -64,44 +65,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-            background: linear-gradient(135deg, #0B4F2E 0%, #1a7a42 100%);
+            background: linear-gradient(135deg, rgba(11, 79, 46, 0.95) 0%, rgba(26, 122, 66, 0.92) 50%, rgba(11, 79, 46, 0.95) 100%);
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 20px;
-            position: relative;
-            overflow-x: hidden;
-        }
-
-        /* Animated background shapes */
-        body::before {
-            content: '';
-            position: absolute;
-            width: 300px;
-            height: 300px;
-            background: rgba(255, 255, 255, 0.08);
-            border-radius: 50%;
-            top: -150px;
-            right: -150px;
-            animation: float 20s infinite;
-        }
-
-        body::after {
-            content: '';
-            position: absolute;
-            width: 400px;
-            height: 400px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 50%;
-            bottom: -200px;
-            left: -200px;
-            animation: float 25s infinite reverse;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translate(0, 0) rotate(0deg); }
-            50% { transform: translate(30px, 30px) rotate(180deg); }
         }
 
         .container {
@@ -110,16 +79,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             width: 100%;
             border-radius: 32px;
             padding: 48px 40px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-            position: relative;
-            z-index: 1;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
             animation: slideUp 0.5s ease-out;
         }
 
         @keyframes slideUp {
             from {
                 opacity: 0;
-                transform: translateY(30px);
+                transform: translateY(20px);
             }
             to {
                 opacity: 1;
@@ -127,7 +94,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        .logo {
+        /* Logo Section */
+        .logo-section {
             text-align: center;
             margin-bottom: 32px;
         }
@@ -136,17 +104,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             width: 80px;
             height: 80px;
             background: linear-gradient(135deg, #0B4F2E 0%, #1a7a42 100%);
-            border-radius: 50%;
+            border-radius: 24px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             margin-bottom: 20px;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
+            box-shadow: 0 8px 20px rgba(11, 79, 46, 0.2);
         }
 
         .logo-icon i {
@@ -154,14 +117,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             color: white;
         }
 
-        h2 {
+        h1 {
             font-size: 28px;
             font-weight: 700;
-            background: linear-gradient(135deg, #0B4F2E 0%, #1a7a42 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            text-align: center;
+            color: #1f2937;
             margin-bottom: 8px;
         }
 
@@ -169,42 +128,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             text-align: center;
             color: #6b7280;
             font-size: 14px;
-            margin-bottom: 32px;
             line-height: 1.6;
         }
 
+        /* Alert Messages */
         .alert {
             padding: 14px 16px;
             border-radius: 12px;
-            margin: 20px 0;
+            margin: 24px 0;
             display: flex;
             align-items: center;
             gap: 12px;
-            animation: shake 0.5s ease-in-out;
+            animation: slideIn 0.3s ease-out;
         }
 
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-10px); }
-            75% { transform: translateX(10px); }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
 
         .alert i {
-            font-size: 20px;
+            font-size: 18px;
         }
 
         .alert-error {
-            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-            color: #991b1b;
+            background: #fef2f2;
+            color: #dc2626;
             border-left: 4px solid #dc2626;
         }
 
         .alert-success {
-            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-            color: #065f46;
+            background: #ecfdf5;
+            color: #10b981;
             border-left: 4px solid #10b981;
         }
 
+        /* Input Group */
         .input-group {
             margin-bottom: 24px;
             position: relative;
@@ -220,7 +185,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             transition: all 0.3s;
         }
 
-        input {
+        .input-group input {
             width: 100%;
             padding: 14px 16px 14px 48px;
             border: 2px solid #e5e7eb;
@@ -229,18 +194,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             transition: all 0.3s;
             font-family: inherit;
             outline: none;
+            background: #ffffff;
         }
 
-        input:focus {
+        .input-group input:focus {
             border-color: #0B4F2E;
-            box-shadow: 0 0 0 4px rgba(11, 79, 46, 0.1);
+            box-shadow: 0 0 0 3px rgba(11, 79, 46, 0.1);
         }
 
-        input:hover {
+        .input-group input:focus + i {
+            color: #0B4F2E;
+        }
+
+        .input-group input:hover {
             border-color: #1a7a42;
         }
 
-        button {
+        /* Submit Button */
+        .submit-btn {
             width: 100%;
             background: linear-gradient(135deg, #0B4F2E 0%, #1a7a42 100%);
             color: white;
@@ -255,42 +226,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             align-items: center;
             justify-content: center;
             gap: 10px;
-            position: relative;
-            overflow: hidden;
+            margin-bottom: 24px;
         }
 
-        button::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.3);
-            transform: translate(-50%, -50%);
-            transition: width 0.6s, height 0.6s;
-        }
-
-        button:hover::before {
-            width: 300px;
-            height: 300px;
-        }
-
-        button:hover {
+        .submit-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 25px -5px rgba(11, 79, 46, 0.4);
+            box-shadow: 0 8px 20px rgba(11, 79, 46, 0.3);
         }
 
-        button:active {
+        .submit-btn:active {
             transform: translateY(0);
         }
 
+        .submit-btn.loading {
+            pointer-events: none;
+            opacity: 0.8;
+        }
+
+        .submit-btn.loading i {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Back Link */
         .back-link {
             text-align: center;
-            margin-top: 28px;
-            padding-top: 20px;
-            border-top: 1px solid #e5e7eb;
+            margin-bottom: 28px;
         }
 
         .back-link a {
@@ -306,63 +271,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .back-link a:hover {
             color: #0B4F2E;
-            transform: translateX(-4px);
+            transform: translateX(-3px);
         }
 
-        /* Loading state */
-        button.loading {
-            pointer-events: none;
-            opacity: 0.7;
-        }
-
-        button.loading i {
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        /* Responsive design */
-        @media (max-width: 640px) {
-            .container {
-                padding: 32px 24px;
-            }
-            
-            h2 {
-                font-size: 24px;
-            }
-            
-            .logo-icon {
-                width: 60px;
-                height: 60px;
-            }
-            
-            .logo-icon i {
-                font-size: 30px;
-            }
-        }
-
-        /* Features section */
+        /* Features */
         .features {
             display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-top: 32px;
+            justify-content: space-between;
+            gap: 12px;
             padding-top: 24px;
             border-top: 1px solid #e5e7eb;
         }
 
         .feature {
-            text-align: center;
             flex: 1;
+            text-align: center;
         }
 
         .feature i {
             font-size: 20px;
             color: #0B4F2E;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
             display: inline-block;
         }
 
@@ -370,19 +299,90 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-size: 11px;
             color: #6b7280;
             display: block;
+            font-weight: 500;
+        }
+
+        /* Field Error */
+        .field-error {
+            color: #dc2626;
+            font-size: 12px;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-5px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .container {
+                padding: 32px 24px;
+                border-radius: 24px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .logo-icon {
+                width: 65px;
+                height: 65px;
+            }
+
+            .logo-icon i {
+                font-size: 32px;
+            }
+
+            .features {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .feature {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                text-align: left;
+            }
+
+            .feature i {
+                margin-bottom: 0;
+                width: 30px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 28px 20px;
+            }
+
+            .submit-btn {
+                padding: 12px;
+                font-size: 15px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="logo">
+        <div class="logo-section">
             <div class="logo-icon">
                 <i class="fas fa-key"></i>
             </div>
-            <h2>Forgot Password?</h2>
+            <h1>Forgot Password?</h1>
             <div class="subtitle">
-                Don't worry! It happens to the best of us.<br>
-                Enter your email and we'll send you a reset code.
+                Enter your email address and we'll send you a password reset code.
             </div>
         </div>
         
@@ -406,14 +406,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input 
                     type="email" 
                     name="email" 
-                    placeholder="Enter your registered email" 
+                    id="emailInput"
+                    placeholder="Enter your registered email address" 
                     required 
                     autofocus
                     autocomplete="email"
                 >
             </div>
             
-            <button type="submit" id="submitBtn">
+            <button type="submit" class="submit-btn" id="submitBtn">
                 <i class="fas fa-paper-plane"></i>
                 <span>Send Reset Code</span>
             </button>
@@ -445,12 +446,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <script>
         const form = document.getElementById('forgotForm');
         const submitBtn = document.getElementById('submitBtn');
-        const emailInput = document.querySelector('input[name="email"]');
+        const emailInput = document.getElementById('emailInput');
 
         // Add loading state on form submit
         form.addEventListener('submit', function(e) {
-            if (emailInput.value.trim() === '' || !emailInput.checkValidity()) {
+            const email = emailInput.value.trim();
+            const emailPattern = /^[^\s@]+@([^\s@.,]+\.)+[^\s@.,]{2,}$/;
+            
+            if (email === '') {
                 e.preventDefault();
+                showFieldError(emailInput, 'Please enter your email address');
+                return;
+            }
+            
+            if (!emailPattern.test(email)) {
+                e.preventDefault();
+                showFieldError(emailInput, 'Please enter a valid email address');
                 return;
             }
             
@@ -459,25 +470,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             submitBtn.querySelector('span').textContent = 'Sending...';
         });
 
+        // Show field error
+        function showFieldError(field, message) {
+            field.style.borderColor = '#dc2626';
+            field.style.backgroundColor = '#fef2f2';
+            
+            // Remove existing error message
+            const existingError = field.parentElement.querySelector('.field-error');
+            if (existingError) existingError.remove();
+            
+            // Add error message
+            const errorMsg = document.createElement('div');
+            errorMsg.className = 'field-error';
+            errorMsg.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + message;
+            field.parentElement.appendChild(errorMsg);
+            
+            setTimeout(() => {
+                field.style.borderColor = '#e5e7eb';
+                field.style.backgroundColor = '#ffffff';
+                if (errorMsg) errorMsg.remove();
+            }, 3000);
+        }
+
         // Real-time email validation
         emailInput.addEventListener('input', function() {
-            if (this.value.trim() !== '' && this.checkValidity()) {
+            const email = this.value.trim();
+            const emailPattern = /^[^\s@]+@([^\s@.,]+\.)+[^\s@.,]{2,}$/;
+            
+            if (email !== '' && emailPattern.test(email)) {
                 this.style.borderColor = '#10b981';
-            } else if (this.value.trim() !== '') {
-                this.style.borderColor = '#ef4444';
+                this.style.backgroundColor = '#f0fdf4';
+            } else if (email !== '') {
+                this.style.borderColor = '#dc2626';
+                this.style.backgroundColor = '#fef2f2';
             } else {
                 this.style.borderColor = '#e5e7eb';
+                this.style.backgroundColor = '#ffffff';
             }
         });
 
-        // Remove alert after 5 seconds
+        emailInput.addEventListener('blur', function() {
+            const email = this.value.trim();
+            if (email !== '' && !/^[^\s@]+@([^\s@.,]+\.)+[^\s@.,]{2,}$/.test(email)) {
+                showFieldError(this, 'Please enter a valid email address');
+            }
+        });
+
+        // Auto-hide alerts after 5 seconds
         setTimeout(() => {
             const alerts = document.querySelectorAll('.alert');
             alerts.forEach(alert => {
                 setTimeout(() => {
+                    alert.style.transition = 'opacity 0.3s';
                     alert.style.opacity = '0';
                     setTimeout(() => alert.remove(), 300);
-                }, 5000);
+                }, 4000);
             });
         }, 1000);
     </script>

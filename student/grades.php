@@ -288,7 +288,7 @@ $grades_data_json = json_encode($grades_data);
                                     <div class="subject-info">
                                         <h4><?php echo htmlspecialchars($subject['subject_name']); ?></h4>
                                         <?php if(!$has_grades): ?>
-                                            <p style="font-size: 0.7rem; color: #f59e0b;"><i class="fas fa-clock"></i> No grades yet</p>
+                                            <p style="font-size: 0.7rem; color: #065510ff;"><i class="fas fa-clock"></i> No grades yet</p>
                                         <?php endif; ?>
                                     </div>
                                     <button class="view-grade-btn" data-subject-id="<?php echo $subject['id']; ?>" data-subject-name="<?php echo htmlspecialchars($subject['subject_name']); ?>">

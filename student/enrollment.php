@@ -86,8 +86,8 @@ if(isset($_POST['enroll'])){
             // Prepare insert statement
             $sql = "INSERT INTO enrollments (student_id, grade_id, school_year, status, strand, student_type,
                     form_138, form_137, psa_birth_cert, good_moral_cert, certificate_of_completion, 
-                    id_pictures, medical_cert, entrance_exam_result) 
-                    VALUES (?, ?, ?, 'Pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    id_pictures, medical_cert) 
+                    VALUES (?, ?, ?, 'Pending', ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             
             $stmt = $conn->prepare($sql);
             $result = $stmt->execute([
@@ -98,8 +98,7 @@ if(isset($_POST['enroll'])){
                 $uploaded_files['good_moral_cert'] ?? null,
                 $uploaded_files['certificate_of_completion'] ?? null,
                 $uploaded_files['id_pictures'] ?? null,
-                $uploaded_files['medical_cert'] ?? null,
-                $uploaded_files['entrance_exam_result'] ?? null
+                $uploaded_files['medical_cert'] ?? null
             ]);
             
             if($result){
@@ -151,8 +150,7 @@ function getRequirements($grade_name, $student_type) {
                     ['name' => 'Form 137 (Permanent Record)', 'required' => true, 'field' => 'form_137'],
                     ['name' => 'PSA Birth Certificate', 'required' => true, 'field' => 'psa_birth_cert'],
                     ['name' => 'Good Moral Certificate', 'required' => true, 'field' => 'good_moral_cert'],
-                    ['name' => '2x2 ID Pictures', 'required' => true, 'field' => 'id_pictures'],
-                    ['name' => 'Entrance Exam / Interview Result', 'required' => false, 'field' => 'entrance_exam_result']
+                    ['name' => '2x2 ID Pictures', 'required' => true, 'field' => 'id_pictures']
                 ];
             }
             break;
@@ -171,8 +169,7 @@ function getRequirements($grade_name, $student_type) {
                     ['name' => 'Form 138 (Grade 10 Report Card)', 'required' => true, 'field' => 'form_138'],
                     ['name' => 'Certificate of Completion (Junior High)', 'required' => true, 'field' => 'certificate_of_completion'],
                     ['name' => 'PSA Birth Certificate', 'required' => true, 'field' => 'psa_birth_cert'],
-                    ['name' => 'Good Moral Certificate', 'required' => true, 'field' => 'good_moral_cert'],
-                    ['name' => 'Entrance Exam / Screening Result', 'required' => false, 'field' => 'entrance_exam_result']
+                    ['name' => 'Good Moral Certificate', 'required' => true, 'field' => 'good_moral_cert']
                 ];
             }
             break;
@@ -231,6 +228,9 @@ function getStudentTypeOptions($grade_name) {
     
     return $options;
 }
+
+// Set current page for active menu highlighting
+$current_page = 'enrollment';
 ?>
 
 <!DOCTYPE html>
@@ -284,7 +284,7 @@ function getStudentTypeOptions($grade_name) {
                 <div class="nav-section">
                     <div class="nav-section-title">MAIN MENU</div>
                     <ul class="nav-items">
-                        <li><a href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                        <li><a href="dashboard.php" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
                         <li><a href="schedule.php"><i class="fas fa-calendar-alt"></i> Class Schedule</a></li>
                         <li><a href="grades.php"><i class="fas fa-star"></i> My Grades</a></li>
                         <li><a href="enrollment_history.php"><i class="fas fa-history"></i> Enrollment History</a></li>
@@ -489,8 +489,7 @@ function getStudentTypeOptions($grade_name) {
                     { name: 'Form 137 (Permanent Record - to follow)', required: true, can_follow: true, field: 'form_137' },
                     { name: 'PSA Birth Certificate', required: true, can_follow: false, field: 'psa_birth_cert' },
                     { name: 'Good Moral Certificate', required: true, can_follow: false, field: 'good_moral_cert' },
-                    { name: '2x2 ID Pictures', required: true, can_follow: false, field: 'id_pictures' },
-                    { name: 'Entrance Exam / Interview Result', required: false, can_follow: true, field: 'entrance_exam_result' }
+                    { name: '2x2 ID Pictures', required: true, can_follow: false, field: 'id_pictures' }
                 ]
             },
             'Grade 9': {
@@ -502,8 +501,7 @@ function getStudentTypeOptions($grade_name) {
                     { name: 'Form 137 (Permanent Record - to follow)', required: true, can_follow: true, field: 'form_137' },
                     { name: 'PSA Birth Certificate', required: true, can_follow: false, field: 'psa_birth_cert' },
                     { name: 'Good Moral Certificate', required: true, can_follow: false, field: 'good_moral_cert' },
-                    { name: '2x2 ID Pictures', required: true, can_follow: false, field: 'id_pictures' },
-                    { name: 'Entrance Exam / Interview Result', required: false, can_follow: true, field: 'entrance_exam_result' }
+                    { name: '2x2 ID Pictures', required: true, can_follow: false, field: 'id_pictures' }
                 ]
             },
             'Grade 10': {
@@ -515,8 +513,7 @@ function getStudentTypeOptions($grade_name) {
                     { name: 'Form 137 (Permanent Record - to follow)', required: true, can_follow: true, field: 'form_137' },
                     { name: 'PSA Birth Certificate', required: true, can_follow: false, field: 'psa_birth_cert' },
                     { name: 'Good Moral Certificate', required: true, can_follow: false, field: 'good_moral_cert' },
-                    { name: '2x2 ID Pictures', required: true, can_follow: false, field: 'id_pictures' },
-                    { name: 'Entrance Exam / Interview Result', required: false, can_follow: true, field: 'entrance_exam_result' }
+                    { name: '2x2 ID Pictures', required: true, can_follow: false, field: 'id_pictures' }
                 ]
             },
             'Grade 11': {
@@ -531,8 +528,7 @@ function getStudentTypeOptions($grade_name) {
                     { name: 'Form 138 (Grade 10 Report Card)', required: true, can_follow: false, field: 'form_138' },
                     { name: 'Certificate of Completion (Junior High)', required: true, can_follow: false, field: 'certificate_of_completion' },
                     { name: 'PSA Birth Certificate', required: true, can_follow: false, field: 'psa_birth_cert' },
-                    { name: 'Good Moral Certificate', required: true, can_follow: false, field: 'good_moral_cert' },
-                    { name: 'Entrance Exam / Screening Result', required: false, can_follow: true, field: 'entrance_exam_result' }
+                    { name: 'Good Moral Certificate', required: true, can_follow: false, field: 'good_moral_cert' }
                 ]
             },
             'Grade 12': {
@@ -697,7 +693,29 @@ function getStudentTypeOptions($grade_name) {
             if(schoolYearInput && !schoolYearInput.value) {
                 schoolYearInput.value = year + '-' + nextYear;
             }
+            
+            // Ensure Dashboard menu item stays active
+            const navLinks = document.querySelectorAll('.nav-items a');
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            const dashboardLink = document.querySelector('.nav-items a[href="dashboard.php"]');
+            if(dashboardLink) {
+                dashboardLink.classList.add('active');
+            }
         }
+        
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(e) {
+            if(window.innerWidth <= 768) {
+                if(sidebar && menuToggle) {
+                    if(!sidebar.contains(e.target) && !menuToggle.contains(e.target)) {
+                        sidebar.classList.remove('active');
+                    }
+                }
+            }
+        });
     </script>
 </body>
 </html>

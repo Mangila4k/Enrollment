@@ -37,27 +37,76 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 300);
         });
     }, 5000);
+    
+    // Add print button if not exists
+    const pageHeader = document.querySelector('.page-header');
+    if (pageHeader && !document.querySelector('.print-btn')) {
+        const printBtn = document.createElement('button');
+        printBtn.className = 'print-btn';
+        printBtn.innerHTML = '<i class="fas fa-print"></i> Print';
+        printBtn.onclick = () => printEnrollment();
+        printBtn.style.cssText = `
+            background: #6c757d;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+            transition: all 0.3s;
+            margin-left: 10px;
+        `;
+        printBtn.addEventListener('mouseenter', () => {
+            printBtn.style.background = '#5a6268';
+            printBtn.style.transform = 'translateY(-2px)';
+        });
+        printBtn.addEventListener('mouseleave', () => {
+            printBtn.style.background = '#6c757d';
+            printBtn.style.transform = 'translateY(0)';
+        });
+        
+        const headerActions = document.querySelector('.page-header div:first-child');
+        if (headerActions) {
+            headerActions.appendChild(printBtn);
+        }
+    }
 });
 
-// Notify requirement function with improved feedback
-function notifyRequirement(requirementKey, requirementName) {
+// Notify requirement function
+function notifyRequirement(requirementId, requirementName) {
+    if (!enrollmentData) {
+        console.error('enrollmentData is not defined');
+        showToast('Error: Enrollment data not found', 'error');
+        return;
+    }
+    
     const studentName = enrollmentData.studentName;
     const studentEmail = enrollmentData.studentEmail;
     const studentId = enrollmentData.studentId;
     
-    // Get the button that was clicked
-    const notifyBtn = event ? event.target.closest('.btn-notify') : document.querySelector(`.btn-notify[data-key="${requirementKey}"]`);
+    // Find the button that was clicked
+    const buttons = document.querySelectorAll('.btn-notify');
+    let clickedButton = null;
+    for (let btn of buttons) {
+        if (btn.textContent.includes(requirementName) || btn.parentElement?.previousElementSibling?.querySelector('.requirement-name')?.textContent === requirementName) {
+            clickedButton = btn;
+            break;
+        }
+    }
     
     // Show confirmation dialog
     if (confirm(`Send notification to ${studentName} about missing requirement: ${requirementName}?`)) {
         // Store original button content
-        const originalText = notifyBtn ? notifyBtn.innerHTML : '<i class="fas fa-bell"></i> Notify';
+        const originalText = clickedButton ? clickedButton.innerHTML : '<i class="fas fa-bell"></i> Notify';
         
         // Disable button and show loading state
-        if (notifyBtn) {
-            notifyBtn.disabled = true;
-            notifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
-            notifyBtn.style.opacity = '0.7';
+        if (clickedButton) {
+            clickedButton.disabled = true;
+            clickedButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+            clickedButton.style.opacity = '0.7';
         }
         
         // Show loading toast
@@ -70,10 +119,10 @@ function notifyRequirement(requirementKey, requirementName) {
         
         xhr.onload = function() {
             // Restore button
-            if (notifyBtn) {
-                notifyBtn.disabled = false;
-                notifyBtn.innerHTML = originalText;
-                notifyBtn.style.opacity = '1';
+            if (clickedButton) {
+                clickedButton.disabled = false;
+                clickedButton.innerHTML = originalText;
+                clickedButton.style.opacity = '1';
             }
             
             if (xhr.status === 200) {
@@ -82,12 +131,12 @@ function notifyRequirement(requirementKey, requirementName) {
                     if (response.success) {
                         showToast(response.message || `Notification sent to ${studentName} about ${requirementName}`, 'success');
                         // Visual feedback that notification was sent
-                        if (notifyBtn) {
-                            notifyBtn.innerHTML = '<i class="fas fa-check"></i> Sent!';
-                            notifyBtn.style.background = '#10b981';
+                        if (clickedButton) {
+                            clickedButton.innerHTML = '<i class="fas fa-check"></i> Sent!';
+                            clickedButton.style.background = '#10b981';
                             setTimeout(() => {
-                                notifyBtn.innerHTML = originalText;
-                                notifyBtn.style.background = '#f59e0b';
+                                clickedButton.innerHTML = originalText;
+                                clickedButton.style.background = '#f59e0b';
                             }, 3000);
                         }
                     } else {
@@ -104,10 +153,10 @@ function notifyRequirement(requirementKey, requirementName) {
         
         xhr.onerror = function() {
             // Restore button on error
-            if (notifyBtn) {
-                notifyBtn.disabled = false;
-                notifyBtn.innerHTML = originalText;
-                notifyBtn.style.opacity = '1';
+            if (clickedButton) {
+                clickedButton.disabled = false;
+                clickedButton.innerHTML = originalText;
+                clickedButton.style.opacity = '1';
             }
             showToast('Network error. Please check your connection.', 'error');
         };
@@ -115,20 +164,30 @@ function notifyRequirement(requirementKey, requirementName) {
         // Send the request with timeout
         xhr.timeout = 30000;
         xhr.ontimeout = function() {
-            if (notifyBtn) {
-                notifyBtn.disabled = false;
-                notifyBtn.innerHTML = originalText;
-                notifyBtn.style.opacity = '1';
+            if (clickedButton) {
+                clickedButton.disabled = false;
+                clickedButton.innerHTML = originalText;
+                clickedButton.style.opacity = '1';
             }
             showToast('Request timeout. Please try again.', 'error');
         };
         
-        xhr.send(`student_id=${studentId}&student_email=${encodeURIComponent(studentEmail)}&student_name=${encodeURIComponent(studentName)}&requirement=${encodeURIComponent(requirementName)}&requirement_key=${requirementKey}`);
+        xhr.send(`student_id=${studentId}&student_email=${encodeURIComponent(studentEmail)}&student_name=${encodeURIComponent(studentName)}&requirement=${encodeURIComponent(requirementName)}&requirement_id=${requirementId}`);
     }
+}
+
+// Print enrollment function
+function printEnrollment() {
+    const originalTitle = document.title;
+    const studentName = enrollmentData ? enrollmentData.studentName : 'Enrollment';
+    document.title = `Enrollment_${studentName.replace(/\s/g, '_')}`;
+    window.print();
+    document.title = originalTitle;
 }
 
 // Toast notification function
 function showToast(message, type = 'info') {
+    // Remove existing toast
     const existingToast = document.querySelector('.toast-notification');
     if (existingToast) existingToast.remove();
     
@@ -150,7 +209,7 @@ function showToast(message, type = 'info') {
     }, 3000);
 }
 
-// Copy functionality
+// Copy to clipboard function
 function copyToClipboard(text, fieldName) {
     navigator.clipboard.writeText(text).then(() => {
         showToast(`${fieldName} copied to clipboard!`, 'success');
@@ -159,8 +218,9 @@ function copyToClipboard(text, fieldName) {
     });
 }
 
-// Add copy functionality to student name
+// Add copy functionality to elements
 document.addEventListener('DOMContentLoaded', function() {
+    // Copy student name
     const studentName = document.querySelector('.student-details h3');
     if (studentName) {
         studentName.style.cursor = 'pointer';
@@ -190,66 +250,48 @@ document.addEventListener('DOMContentLoaded', function() {
         idSpan.title = 'Click to copy ID number';
         idSpan.addEventListener('click', () => {
             let id = idSpan.textContent;
-            id = id.replace('ID:', '').replace('🆔', '').trim();
+            id = id.replace('ID:', '').replace('ID', '').replace(':', '').trim();
             copyToClipboard(id, 'ID number');
         });
     }
+});
+
+// Add hover effects to requirement items
+document.addEventListener('DOMContentLoaded', function() {
+    const requirementItems = document.querySelectorAll('.requirement-item');
+    requirementItems.forEach(item => {
+        item.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateX(5px)';
+            this.style.transition = 'transform 0.3s ease';
+        });
+        item.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateX(0)';
+        });
+    });
     
-    // Add data-key attribute to notify buttons for better tracking
-    document.querySelectorAll('.btn-notify').forEach((btn, index) => {
-        const requirementItem = btn.closest('.requirement-item');
-        if (requirementItem && requirementItem.dataset.key) {
-            btn.setAttribute('data-key', requirementItem.dataset.key);
-        }
-        // Add click handler directly to ensure it works
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            const key = this.getAttribute('data-key') || 'unknown';
-            const requirementName = this.closest('.requirement-item')?.querySelector('.requirement-name')?.textContent || 'requirement';
-            notifyRequirement(key, requirementName);
+    // Add hover effects to document links
+    const docLinks = document.querySelectorAll('.btn-view-file');
+    docLinks.forEach(link => {
+        link.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+        });
+        link.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
         });
     });
 });
 
-// Print enrollment details
-window.printEnrollment = function() {
-    const originalTitle = document.title;
-    document.title = `Enrollment_${enrollmentData.id}_${enrollmentData.studentName}`;
-    window.print();
-    document.title = originalTitle;
-};
-
-// Add print button to page header if needed
-document.addEventListener('DOMContentLoaded', function() {
-    const pageHeader = document.querySelector('.page-header');
-    if (pageHeader && !document.querySelector('.print-btn')) {
-        const printBtn = document.createElement('button');
-        printBtn.className = 'print-btn';
-        printBtn.innerHTML = '<i class="fas fa-print"></i> Print';
-        printBtn.onclick = () => window.printEnrollment();
-        printBtn.style.cssText = `
-            background: #6c757d;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            font-weight: 500;
-            transition: all 0.3s;
-        `;
-        printBtn.addEventListener('mouseenter', () => {
-            printBtn.style.background = '#5a6268';
-            printBtn.style.transform = 'translateY(-2px)';
-        });
-        printBtn.addEventListener('mouseleave', () => {
-            printBtn.style.background = '#6c757d';
-            printBtn.style.transform = 'translateY(0)';
-        });
-        pageHeader.appendChild(printBtn);
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    // Ctrl + P for print
+    if (e.ctrlKey && e.key === 'p') {
+        e.preventDefault();
+        printEnrollment();
+    }
+    // Ctrl + B for back
+    if (e.ctrlKey && e.key === 'b') {
+        e.preventDefault();
+        window.location.href = 'enrollments.php';
     }
 });
 
@@ -316,6 +358,7 @@ toastStyles.textContent = `
         gap: 8px;
         font-weight: 500;
         transition: all 0.3s;
+        margin-left: 10px;
     }
     
     .print-btn:hover {
@@ -329,16 +372,51 @@ toastStyles.textContent = `
     }
     
     @media print {
-        .sidebar, .back-btn, .print-btn, .menu-toggle, .page-header .back-btn, .page-header .print-btn, .btn-notify {
+        .sidebar, 
+        .back-btn, 
+        .print-btn, 
+        .menu-toggle, 
+        .page-header .back-btn, 
+        .page-header .print-btn, 
+        .btn-notify,
+        .requirement-actions,
+        .view-link {
             display: none !important;
         }
+        
         .main-content {
             margin: 0 !important;
             padding: 0 !important;
         }
+        
         .detail-card {
             break-inside: avoid;
             page-break-inside: avoid;
+            box-shadow: none !important;
+            border: 1px solid #ddd !important;
+        }
+        
+        .student-avatar-large-img,
+        .student-avatar-large {
+            border: 1px solid #ddd;
+        }
+        
+        .progress-bar {
+            border: 1px solid #ddd;
+            background: #f0f0f0;
+        }
+        
+        .progress-fill {
+            background: #0B4F2E !important;
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+        }
+        
+        .status-badge-submitted,
+        .status-badge-missing,
+        .requirement-badge {
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
         }
     }
     
@@ -353,38 +431,6 @@ toastStyles.textContent = `
 `;
 document.head.appendChild(toastStyles);
 
-// Add event listener for dynamically added notify buttons
-document.addEventListener('DOMContentLoaded', function() {
-    // Observe for dynamically added notify buttons
-    const observer = new MutationObserver(function(mutations) {
-        mutations.forEach(function(mutation) {
-            mutation.addedNodes.forEach(function(node) {
-                if (node.nodeType === 1) {
-                    const notifyBtns = node.querySelectorAll ? node.querySelectorAll('.btn-notify') : [];
-                    notifyBtns.forEach(btn => {
-                        if (!btn.hasAttribute('data-listener')) {
-                            btn.setAttribute('data-listener', 'true');
-                            const requirementItem = btn.closest('.requirement-item');
-                            if (requirementItem && requirementItem.dataset.key) {
-                                btn.setAttribute('data-key', requirementItem.dataset.key);
-                            }
-                            btn.addEventListener('click', function(e) {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                const key = this.getAttribute('data-key') || 'unknown';
-                                const requirementName = this.closest('.requirement-item')?.querySelector('.requirement-name')?.textContent || 'requirement';
-                                notifyRequirement(key, requirementName);
-                            });
-                        }
-                    });
-                }
-            });
-        });
-    });
-    
-    observer.observe(document.body, { childList: true, subtree: true });
-});
-
-// Export functions for debugging (optional)
-window.notifyRequirement = notifyRequirement;
-window.showToast = showToast;
+// Log that JS is loaded (for debugging)
+console.log('view_enrollment.js loaded successfully');
+console.log('enrollmentData:', typeof enrollmentData !== 'undefined' ? enrollmentData : 'Not defined');

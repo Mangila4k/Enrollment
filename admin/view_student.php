@@ -241,11 +241,6 @@ if(isset($_GET['delete']) && $_GET['delete'] == $student_id) {
                     <a href="edit_student.php?id=<?php echo $student_id; ?>" class="btn-edit">
                         <i class="fas fa-edit"></i> Edit Student
                     </a>
-                    <?php if(!$current_enrollment || $current_enrollment['status'] != 'Enrolled'): ?>
-                        <a href="enroll_student.php?id=<?php echo $student_id; ?>" class="btn-enroll">
-                            <i class="fas fa-user-plus"></i> Enroll Student
-                        </a>
-                    <?php endif; ?>
                     <a href="?delete=<?php echo $student_id; ?>" class="btn-delete" onclick="return confirmDelete()">
                         <i class="fas fa-trash"></i> Delete
                     </a>
@@ -416,9 +411,6 @@ if(isset($_GET['delete']) && $_GET['delete'] == $student_id) {
                 <i class="fas fa-file-signature"></i>
                 <h3>No Enrollment Records</h3>
                 <p>This student has no enrollment history.</p>
-                <a href="enroll_student.php?id=<?php echo $student_id; ?>" class="enroll-now-link">
-                    Enroll Student Now <i class="fas fa-arrow-right"></i>
-                </a>
             </div>
             <?php endif; ?>
         </div>

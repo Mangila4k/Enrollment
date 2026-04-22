@@ -253,52 +253,19 @@ toastStyles.textContent = `
 `;
 document.head.appendChild(toastStyles);
 
-// Make profile info items clickable to copy
-document.addEventListener('DOMContentLoaded', function() {
-    const emailItem = document.querySelector('.profile-info-item .info-value');
-    if (emailItem && emailItem.textContent.includes('@')) {
-        emailItem.style.cursor = 'pointer';
-        emailItem.title = 'Click to copy email';
-        emailItem.addEventListener('click', () => {
-            copyToClipboard(emailItem.textContent.trim(), 'Email');
-        });
-    }
-    
-    const idItem = document.querySelectorAll('.profile-info-item')[1]?.querySelector('.info-value');
-    if (idItem && idItem.textContent !== 'Not set') {
-        idItem.style.cursor = 'pointer';
-        idItem.title = 'Click to copy ID number';
-        idItem.addEventListener('click', () => {
-            copyToClipboard(idItem.textContent.trim(), 'ID number');
-        });
-    }
-});
-
-// Form validation for profile update
-const profileForm = document.querySelector('.form-card form');
-if (profileForm && !profileForm.querySelector('input[name="change_password"]')) {
-    profileForm.addEventListener('submit', function(e) {
-        const fullname = this.querySelector('input[name="fullname"]').value.trim();
-        const email = this.querySelector('input[name="email"]').value.trim();
+// Format phone number input
+const phoneInput = document.querySelector('input[name="phone"]');
+if (phoneInput) {
+    phoneInput.addEventListener('input', function(e) {
+        // Remove all non-numeric characters
+        let value = this.value.replace(/[^0-9]/g, '');
         
-        if (!fullname) {
-            e.preventDefault();
-            showToast('Full name is required', 'error');
-            return false;
+        // Limit to 11 digits (Philippine mobile number)
+        if (value.length > 11) {
+            value = value.slice(0, 11);
         }
         
-        if (!email) {
-            e.preventDefault();
-            showToast('Email address is required', 'error');
-            return false;
-        }
-        
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            e.preventDefault();
-            showToast('Please enter a valid email address', 'error');
-            return false;
-        }
+        this.value = value;
     });
 }
 
@@ -311,5 +278,21 @@ if (profileCard) {
     });
     profileCard.addEventListener('mouseleave', function() {
         this.style.transform = 'translateY(0)';
+    });
+}
+
+// Form validation for phone number before submit
+const profileForm = document.querySelector('.form-card form');
+if (profileForm && !profileForm.querySelector('input[name="change_password"]')) {
+    profileForm.addEventListener('submit', function(e) {
+        const phone = this.querySelector('input[name="phone"]').value;
+        
+        if (phone && phone.length > 0) {
+            if (phone.length !== 11 || !phone.startsWith('09')) {
+                e.preventDefault();
+                showToast('Invalid Philippine mobile number. Format: 09XXXXXXXXX (11 digits)', 'error');
+                return false;
+            }
+        }
     });
 }

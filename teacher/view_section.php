@@ -203,6 +203,9 @@ $attendance_rate = $attendance_stats['total'] > 0
 
 // Get current school year
 $current_sy = date('Y') . '-' . (date('Y') + 1);
+
+// Set current page for active menu highlighting
+$current_page = 'view_section';
 ?>
 
 <!DOCTYPE html>
@@ -410,23 +413,23 @@ $current_sy = date('Y') . '-' . (date('Y') + 1);
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </div>
+                                            </td>
                                             <td>
                                                 <span class="status-badge status-<?php echo strtolower($student['enrollment_status']); ?>">
                                                     <?php echo $student['enrollment_status']; ?>
                                                 </span>
-                                            </div>
+                                            </td>
                                             <td>
                                                 <div class="action-btns">
                                                     <a href="view_student.php?id=<?php echo $student['id']; ?>" class="action-btn view" title="View Student">
                                                         <i class="fas fa-eye"></i>
                                                     </a>
                                                 </div>
-                                            </div>
+                                            </td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>
-                            </div>
+                            </table>
                         <?php else: ?>
                             <div class="no-data">
                                 <i class="fas fa-user-graduate"></i>
@@ -436,49 +439,50 @@ $current_sy = date('Y') . '-' . (date('Y') + 1);
                     </div>
                 </div>
 
-            <!-- Class Schedule -->
-            <div class="card">
-                <div class="card-header">
-                    <h3><i class="fas fa-calendar-alt"></i> Class Schedule</h3>
-                    <span class="badge"><?php echo $subject_count; ?> classes</span>
-                </div>
+                <!-- Class Schedule -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-calendar-alt"></i> Class Schedule</h3>
+                        <span class="badge"><?php echo $subject_count; ?> classes</span>
+                    </div>
 
-                <div class="schedule-list">
-                    <?php if($subjects && $subject_count > 0): ?>
-                        <?php foreach($subjects as $class): 
-                            $is_my_class = ($class['teacher_id'] == $teacher_id);
-                        ?>
-                            <div class="schedule-item <?php echo $is_my_class ? 'taught-by-me' : ''; ?>">
-                                <div class="day-time">
-                                    <span class="day"><?php echo $class['day_name']; ?></span>
-                                    <span class="time">
-                                        <?php echo date('h:i A', strtotime($class['start_time'])); ?> - 
-                                        <?php echo date('h:i A', strtotime($class['end_time'])); ?>
-                                    </span>
-                                </div>
-                                <div class="subject">
-                                    <?php echo htmlspecialchars($class['subject_name']); ?>
-                                    <?php if($is_my_class): ?>
-                                        <span class="taught-badge">You teach this</span>
+                    <div class="schedule-list">
+                        <?php if($subjects && $subject_count > 0): ?>
+                            <?php foreach($subjects as $class): 
+                                $is_my_class = ($class['teacher_id'] == $teacher_id);
+                            ?>
+                                <div class="schedule-item <?php echo $is_my_class ? 'taught-by-me' : ''; ?>">
+                                    <div class="day-time">
+                                        <span class="day"><?php echo $class['day_name']; ?></span>
+                                        <span class="time">
+                                            <?php echo date('h:i A', strtotime($class['start_time'])); ?> - 
+                                            <?php echo date('h:i A', strtotime($class['end_time'])); ?>
+                                        </span>
+                                    </div>
+                                    <div class="subject">
+                                        <?php echo htmlspecialchars($class['subject_name']); ?>
+                                        <?php if($is_my_class): ?>
+                                            <span class="taught-badge">You teach this</span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="teacher">
+                                        <i class="fas fa-user"></i> <?php echo htmlspecialchars($class['teacher_name']); ?>
+                                    </div>
+                                    <?php if($class['room']): ?>
+                                        <div class="room">
+                                            <i class="fas fa-door-open"></i> <?php echo htmlspecialchars($class['room']); ?>
+                                        </div>
                                     <?php endif; ?>
                                 </div>
-                                <div class="teacher">
-                                    <i class="fas fa-user"></i> <?php echo htmlspecialchars($class['teacher_name']); ?>
-                                </div>
-                                <?php if($class['room']): ?>
-                                    <div class="room">
-                                        <i class="fas fa-door-open"></i> <?php echo htmlspecialchars($class['room']); ?>
-                                    </div>
-                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <div class="no-data">
+                                <i class="fas fa-calendar-times"></i>
+                                <h3>No Schedule Yet</h3>
+                                <p>No classes have been scheduled for this section.</p>
                             </div>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <div class="no-data">
-                            <i class="fas fa-calendar-times"></i>
-                            <h3>No Schedule Yet</h3>
-                            <p>No classes have been scheduled for this section.</p>
-                        </div>
-                    <?php endif; ?>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
         </main>
@@ -499,6 +503,27 @@ $current_sy = date('Y') . '-' . (date('Y') + 1);
             subjectsTaught: <?php echo count($subjects_taught); ?>
         };
         
+        // Mobile menu toggle
+        const menuToggle = document.getElementById('menuToggle');
+        const sidebar = document.getElementById('sidebar');
+        
+        if(menuToggle) {
+            menuToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('active');
+            });
+        }
+        
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(e) {
+            if(window.innerWidth <= 768) {
+                if(sidebar && menuToggle) {
+                    if(!sidebar.contains(e.target) && !menuToggle.contains(e.target)) {
+                        sidebar.classList.remove('active');
+                    }
+                }
+            }
+        });
+        
         // Auto-hide alerts after 5 seconds
         setTimeout(function() {
             const alerts = document.querySelectorAll('.alert');
@@ -509,6 +534,21 @@ $current_sy = date('Y') . '-' . (date('Y') + 1);
                 }, 300);
             });
         }, 5000);
+        
+        // Ensure active class is on My Classes even when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Remove active class from all nav links
+            const navLinks = document.querySelectorAll('.nav-items a');
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            // Add active class to My Classes link
+            const myClassesLink = document.querySelector('.nav-items a[href="classes.php"]');
+            if(myClassesLink) {
+                myClassesLink.classList.add('active');
+            }
+        });
     </script>
     
     <?php include('../includes/chatbot_widget_teacher.php'); ?>
